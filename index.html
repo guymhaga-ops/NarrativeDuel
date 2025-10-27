@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>語合《ナラティブデュエル》</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- 共通フォント設定 --- */
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            @apply bg-gray-900 text-white min-h-screen;
+        }
+        .font-noto-serif {
+            font-family: 'Noto Serif JP', sans-serif;
+        }
+        .font-shippori-mincho {
+            font-family: 'Shippori Mincho B1', serif;
+        }
+
+        /* --- ゲーム画面スタイル --- */
+        #gameScreen {
+            @apply flex flex-col h-screen max-w-4xl mx-auto bg-gray-800 shadow-2xl;
+        }
+        header {
+            @apply bg-gray-900 bg-opacity-80 p-3 shadow-md backdrop-blur-sm;
+        }
+        .stats-grid {
+            @apply grid grid-cols-3 gap-2 text-center;
+        }
+        .stat-item {
+            @apply bg-gray-700 p-2 rounded-lg;
+        }
+        .stat-item .label {
+            @apply text-xs text-gray-400;
+        }
+        .stat-item .value {
+            @apply text-lg font-bold;
+        }
+        main {
+            @apply p-4 overflow-hidden flex-1;
+        }
+        
+        #narrativeLog {
+            @apply space-y-3 bg-gray-900 bg-opacity-50 p-4 rounded-lg;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        .log-entry {
+            @apply p-3 rounded-md bg-gray-700 bg-opacity-70; 
+            page-break-inside: avoid;
+        }
+        .log-entry strong {
+            @apply font-bold text-yellow-300;
+        }
+        .log-narrate {
+            @apply border-l-4 border-blue-400 pl-3;
+        }
+        .log-intercept {
+            @apply border-l-4 border-red-400 pl-3;
+        }
+        .log-pass {
+            @apply border-l-4 border-gray-500 pl-3;
+        }
+        .log-system {
+            @apply text-center text-yellow-500 italic;
+        }
+
+        .hand-card {
+            @apply p-3 rounded-lg shadow-md m-1 cursor-pointer transition-all duration-150 transform hover:scale-105;
+            min-height: 80px;
+            width: 120px;
+        }
+        .card-text {
+            @apply font-bold text-lg;
+        }
+        .card-category {
+            @apply text-xs text-gray-200;
+        }
+        
+        .card-type-ENDING { @apply bg-green-700 hover:bg-green-600; }
+        .card-type-WORD { @apply bg-blue-700 hover:bg-blue-600; }
+        .card-type-INTERCEPT { @apply bg-yellow-700 hover:bg-yellow-600; }
+
+        .selected-card {
+            @apply ring-4 ring-white ring-opacity-100 scale-105;
+        }
+        
+        footer {
+            @apply bg-gray-900 bg-opacity-80 p-3 shadow-inner backdrop-blur-sm;
+        }
+        .action-area {
+            @apply flex items-center gap-2 mb-3;
+        }
+        #narrateInput {
+            @apply w-full p-2 rounded bg-gray-700 text-white placeholder-gray-400 border border-gray-600;
+        }
+        .btn {
+            @apply px-4 py-2 rounded-lg font-bold transition-colors duration-150;
+        }
+        .btn-primary {
+            @apply bg-yellow-600 text-gray-900 hover:bg-yellow-500;
+        }
+        .btn-secondary {
+            @apply bg-gray-600 text-white hover:bg-gray-500;
+        }
+        .btn-danger {
+            @apply bg-red-700 text-white hover:bg-red-600;
+        }
+        .btn:disabled {
+            @apply bg-gray-500 text-gray-400 cursor-not-allowed;
+        }
+
+
+        /* --- ★★★ タイトル画面 (モノリス風) デザイン ★★★ --- */
+        
+        @keyframes aurora {
+            0% { background-position: 0% 50%; opacity: 0.7; }
+            50% { background-position: 100% 50%; opacity: 1; }
+            100% { background-position: 0% 50%; opacity: 0.7; }
+        }
+        
+        @keyframes pulseBorder {
+            0% { border-color: rgba(192, 192, 192, 0.4); box-shadow: 0 0 15px rgba(192, 192, 192, 0.2); }
+            50% { border-color: rgba(255, 255, 255, 0.8); box-shadow: 0 0 30px rgba(255, 255, 255, 0.5); }
+            100% { border-color: rgba(192, 192, 192, 0.4); box-shadow: 0 0 15px rgba(192, 192, 192, 0.2); }
+        }
+
+        body.title-screen-active {
+            @apply flex flex-col items-center justify-center;
+            /* 幻想的な森とオーロラの背景 */
+            background: linear-gradient(to bottom, rgba(6, 13, 34, 0.9), rgba(19, 9, 38, 0.9)), 
+                        linear-gradient(45deg, #0d001a, #001f3f, #0d001a);
+            background-size: 100% 100%, 400% 400%;
+            animation: aurora 20s ease infinite;
+            overflow: hidden;
+        }
+
+        #modeSelectionScreen {
+            @apply max-w-sm w-full h-[85vh] max-h-[750px] min-h-[650px]; /* 縦長の石碑 */
+            @apply flex flex-col justify-between; /* タイトルと入力を上下に分離 */
+            @apply p-8 rounded-lg;
+            @apply font-shippori-mincho text-white;
+            
+            /* 石碑の背景 (深い紫 + 幾何学模様) */
+            background-color: #1a1a2e; /* 深い紫 */
+            background-image: 
+                linear-gradient(45deg, rgba(192, 192, 192, 0.05) 25%, transparent 25%, transparent 75%, rgba(192, 192, 192, 0.05) 75%),
+                linear-gradient(45deg, rgba(192, 192, 192, 0.05) 25%, transparent 25%, transparent 75%, rgba(192, 192, 192, 0.05) 75%);
+            background-size: 30px 30px;
+            background-position: 0 0, 15px 15px;
+
+            /* 銀色の光る枠 */
+            border: 3px solid rgba(192, 192, 192, 0.4);
+            box-shadow: 0 0 15px rgba(192, 192, 192, 0.2), inset 0 0 10px rgba(0, 0, 0, 0.5);
+            animation: pulseBorder 5s ease-in-out infinite;
+        }
+
+        /* タイトル部分 (上部) */
+        #modeSelectionScreen .title-header {
+            @apply text-center;
+        }
+
+        #modeSelectionScreen h1 {
+            @apply text-6xl font-bold text-white;
+            text-shadow: 0 0 15px #FFD700, 0 0 25px #FFD700, 0 0 35px #FFD700; /* 強く輝く金 */
+        }
+         #modeSelectionScreen h2 {
+            @apply text-2xl text-yellow-300 opacity-90 mt-2; 
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+         }
+        
+         /* 入力フォーム (下部) */
+        #modeSelectionScreen .form-container {
+             @apply space-y-6 w-full; /* 項目を下部に集める */
+         }
+
+        #modeSelectionScreen label {
+            @apply block font-medium text-gray-300 mb-2 text-base; /* やや暗めの白 */
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        /* 石碑に埋め込まれた入力欄 */
+        #modeSelectionScreen input[type="text"],
+        #modeSelectionScreen select {
+            @apply w-full p-3 rounded-md border-2 text-lg;
+            @apply font-noto-serif transition-all duration-300;
+            
+            /* 深い色 + 銀色の枠 */
+            @apply bg-gray-900 bg-opacity-50 border-gray-500 text-white;
+            @apply placeholder-gray-400;
+
+            /* フォーカス時 (クリスタル風) */
+            @apply focus:bg-gray-800 focus:text-white focus:border-white focus:ring-2 focus:ring-gray-400 focus:outline-none;
+        }
+        
+        /* クリスタル風ボタン */
+        .btn-crystal {
+             @apply w-full btn text-lg font-bold relative overflow-hidden;
+             @apply bg-gray-200 text-gray-900;
+             @apply border-2 border-white;
+             @apply transition-all duration-300 ease-in-out;
+             box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+        }
+        .btn-crystal:hover {
+            @apply bg-white scale-105;
+            box-shadow: 0 6px 25px rgba(255, 255, 255, 0.4);
+        }
+        .btn-crystal:disabled {
+            @apply bg-gray-500 text-gray-700 opacity-50 cursor-not-allowed scale-100;
+            box-shadow: none;
+        }
+
+        /* 金色のアクセントボタン (Join) */
+        .btn-crystal-gold {
+             @apply w-full btn text-lg font-bold relative;
+             @apply bg-yellow-500 bg-opacity-80 text-gray-900;
+             @apply border-2 border-yellow-300;
+             @apply transition-all duration-300 ease-in-out;
+        }
+        .btn-crystal-gold:hover {
+            @apply bg-yellow-400 scale-105;
+        }
+        .btn-crystal-gold:disabled {
+             @apply bg-yellow-700 text-gray-500 opacity-50 cursor-not-allowed scale-100;
+        }
+        
+        /* ルーン風ボタン (透明/銀枠) */
+        .btn-outline-silver { 
+            @apply w-full btn text-base font-bold text-gray-300;
+            @apply bg-transparent border-2 border-gray-500;
+             @apply transition-all duration-300 ease-in-out;
+        }
+        .btn-outline-silver:hover {
+            @apply bg-gray-700 bg-opacity-50 border-white scale-105;
+            @apply text-white;
+        }
+        
+        /* データ読み込み中のステータス */
+        #loadingStatus {
+            @apply text-center text-yellow-300 opacity-70 italic;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+    </style>
+</head>
+<body class="title-screen-active"> <!-- 初期状態はタイトル画面 -->
+
+    <!-- モード選択画面 (モノリス風デザイン) -->
+    <div id="modeSelectionScreen">
+        
+        <!-- タイトル (上部) -->
+        <div class="title-header">
+            <h1>語合</h1>
+            <h2>《ナラティブデュエル》</h2>
+        </div>
+
+        <!-- 入力フォーム (下部) -->
+        <div class="form-container">
+            <div id="loadingStatus">カードデータを読み込み中...</div>
+            <div class="space-y-4">
+                <div>
+                    <label for="playerNameInput">あなたの名前</label>
+                    <input type="text" id="playerNameInput" value="物語士" placeholder="伝説を紡ぐ者">
+                </div>
+                
+                <div>
+                    <label for="gameModeSelect">物語の長さ (勝利に必要な枚数)</label>
+                    <select id="gameModeSelect">
+                        <option value="5">掌編 (5枚)</option>
+                        <option value="10">短編 (10枚)</option>
+                        <option value="15" selected>中編 (15枚)</option>
+                        <option value="20">長編 (20枚)</option>
+                        <option value="30">巨編 (30枚)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="opponentModeSelect">対戦相手</label>
+                    <select id="opponentModeSelect">
+                        <option value="AI" selected>AI (新しい物語を始める)</option>
+                        <option value="HUMAN">人間 (既存の物語に参加)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="space-y-4 pt-4">
+                <button id="startGameBtn" class="btn-crystal" disabled>読み込み中...</button> 
+                <input type="text" id="joinGameIdInput" placeholder="参加コード (Game ID) を入力" class="hidden"> 
+                <button id="openRulebookBtn" class="btn-outline-silver">ルールブックを開く</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ゲーム画面 (変更なし) -->
+    <div id="gameScreen" class="hidden">
+        <!-- ヘッダー：ステータス -->
+        <header>
+            <div class="stats-grid">
+                <!-- プレイヤー1 -->
+                <div class="stat-item text-left">
+                    <div class="label">P1: <span id="p1Name">...</span></div>
+                    <div class="value" id="p1Stats">0 / 0 枚</div>
+                </div>
+                <!-- ターン・ゲームID -->
+                <div class="stat-item">
+                    <div class="label">TURN</div>
+                    <div class="value" id="turnIndicator">...</div>
+                    <div class="text-xs text-gray-500 mt-1">ID: <span id="gameIdDisplay">...</span></div>
+                </div>
+                <!-- プレイヤー2 -->
+                <div class="stat-item text-right">
+                    <div class="label">P2: <span id="p2Name">...</span></div>
+                    <div class="value" id="p2Stats">0 / 0 枚</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 中央：ログ -->
+        <main class="p-4 overflow-hidden">
+            <div id="narrativeLog" class="font-noto-serif">
+                <!-- ログエントリがここに追加されます -->
+            </div>
+        </main>
+
+        <!-- フッター：手札とアクション -->
+        <footer class="p-3">
+            <!-- アクションエリア -->
+            <div class="action-area">
+                <input type="text" id="narrateInput" placeholder="物語を紡ぐ...">
+                <button id="narrateBtn" class="btn btn-primary" disabled>語る</button>
+            </div>
+            <div class="action-area justify-end">
+                <button id="interceptWordBtn" class="btn btn-danger" disabled>「ワード」で妨害</button>
+                <button id="interceptCardBtn" class="btn btn-danger" disabled>「インターセプト」で妨害</button>
+            </div>
+            
+            <!-- 手札エリア -->
+            <div id="playerHand" class="flex flex-wrap justify-center gap-2 p-2 bg-black bg-opacity-20 rounded-lg overflow-y-auto" style="min-height: 100px;">
+                <!-- 手札のカードがここに追加されます -->
+            </div>
+        </footer>
+    </div>
+
+    <!-- メッセージモーダル (変更なし) -->
+    <div id="messageModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-xl max-w-sm w-full text-center">
+            <h3 id="messageTitle" class="text-2xl font-bold mb-4"></h3>
+            <p id="messageText" class="mb-6"></p>
+            <button id="messageCloseBtn" class="btn btn-primary">閉じる</button>
+        </div>
+    </div>
+
+
+<script type="module">
+    // Firebase SDKのインポート
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { 
+        getAuth, 
+        signInAnonymously, 
+        onAuthStateChanged,
+        signInWithCustomToken
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { 
+        getFirestore, 
+        doc, 
+        getDoc, 
+        setDoc, 
+        addDoc, 
+        updateDoc, 
+        onSnapshot, 
+        collection, 
+        serverTimestamp,
+        setLogLevel
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // --- グローバル変数と定数 ---
+
+    // Firebase関連
+    let db, auth, userId, gameUnsubscribe = null;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+
+    // ゲーム状態
+    let localGameState = null;
+    let selectedNarrateCardId = null; // 「語る」ために選択したカードID
+    let selectedInterceptCardId = null; // 「妨害」ために選択したカードID
+
+    // カード定義
+    const CARD_TYPES = {
+        WORD: 'WORD',
+        ENDING: 'ENDING',
+        INTERCEPT: 'INTERCEPT'
+    };
+    
+    // CSVファイルへのパス (ワードカードのみ外部URL)
+    const WORD_CARDS_CSV_PATH = 'http://www.guym.jp/NarrativeDuel/word_cards.csv';
+
+    // ★★★ 埋め込みデータ (ending_cards.csv と special_cards.csv の内容) ★★★
+    const endingCardCsvData = `text,category
+ハッピーエンド,結末
+バッドエンド,結末
+ビターエンド,結末
+皮肉な結末,結末
+夢オチ,結末
+明かされた真実,結末
+謎の結末,結末
+新たな始まり,結末
+すべては虚無へ,結末
+続く…,結末
+完全なる勝利,結末
+完全なる敗北,結末
+束の間の平和,結末
+破滅への序章,結末
+救済,結末`;
+
+    const specialCardCsvData = `type,text,category,count
+INTERCEPT,インターセプト,基本,30`;
+    // ★★★ 埋め込みデータここまで ★★★
+
+
+    // デッキテンプレート
+    let DECK_TEMPLATE = []; 
+    let WORD_CARDS = []; 
+
+    // ゲーム設定
+    const HAND_SIZE = 5;
+    const GAME_CONFIG = {
+        "5": { score: 5, name: "掌編" },
+        "10": { score: 10, name: "短編" },
+        "15": { score: 15, name: "中編" },
+        "20": { score: 20, name: "長編" },
+        "30": { score: 30, name: "巨編" }
+    };
+    const API_RETRY_DELAY = 2000; // 2秒
+
+    // APIキー（空のまま）
+    const apiKey = "";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+    // DOM要素
+    const modeSelectionScreen = document.getElementById('modeSelectionScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    
+    const startGameBtn = document.getElementById('startGameBtn');
+    const joinGameIdInput = document.getElementById('joinGameIdInput');
+    const gameModeSelect = document.getElementById('gameModeSelect');
+    const playerNameInput = document.getElementById('playerNameInput');
+    const opponentModeSelect = document.getElementById('opponentModeSelect'); 
+    const openRulebookBtn = document.getElementById('openRulebookBtn'); 
+    const loadingStatus = document.getElementById('loadingStatus'); // 読み込みステータス
+
+    const p1Name = document.getElementById('p1Name');
+    const p1Stats = document.getElementById('p1Stats');
+    const p2Name = document.getElementById('p2Name');
+    const p2Stats = document.getElementById('p2Stats');
+    const turnIndicator = document.getElementById('turnIndicator');
+    const gameIdDisplay = document.getElementById('gameIdDisplay');
+    const narrativeLog = document.getElementById('narrativeLog');
+    const playerHand = document.getElementById('playerHand');
+    
+    const narrateInput = document.getElementById('narrateInput');
+    const narrateBtn = document.getElementById('narrateBtn');
+    const interceptWordBtn = document.getElementById('interceptWordBtn');
+    const interceptCardBtn = document.getElementById('interceptCardBtn');
+
+    const messageModal = document.getElementById('messageModal');
+    const messageTitle = document.getElementById('messageTitle');
+    const messageText = document.getElementById('messageText');
+    const messageCloseBtn = document.getElementById('messageCloseBtn');
+
+    // --- ★★★ カードデータ読み込み ★★★ ---
+    
+    /**
+     * CSVテキストをパースする
+     * @param {string} csvText - CSV形式の文字列
+     * @returns {Array<object>} - パースされたオブジェクトの配列
+     */
+    function parseCSV(csvText) {
+        const lines = csvText.split('\n').filter(line => line.trim() !== '');
+        if (lines.length < 2) return []; // ヘッダー + データ
+        
+        const header = lines[0].split(',').map(h => h.trim());
+        const data = lines.slice(1).map(line => {
+            const values = line.split(',').map(v => v.trim());
+            const obj = {};
+            header.forEach((h, i) => {
+                obj[h] = values[i];
+            });
+            return obj;
+        });
+        return data;
+    }
+
+    /**
+     * ゲーム起動時にカードデータを読み込む
+     */
+    async function loadGameData() {
+        console.log("カードデータの読み込み開始...");
+        try {
+            // 1. ワードカードのみをfetch
+            const wordResponse = await fetch(WORD_CARDS_CSV_PATH);
+            if (!wordResponse.ok) throw new Error(`'${WORD_CARDS_CSV_PATH}' の読み込みに失敗`);
+            
+            const wordCsvText = await wordResponse.text();
+
+            // 2. ワードカードの処理 (重複排除)
+            const uniqueCards = new Map();
+            const parsedWordCards = parseCSV(wordCsvText);
+            
+            parsedWordCards.forEach((card, index) => {
+                 // CSVのヘッダーが '単語' と 'カテゴリ' であることを期待
+                 if (card.単語 && card.カテゴリ) { 
+                    const text = card.単語;
+                    if (!uniqueCards.has(text)) { // 最初の出現のみ採用
+                        uniqueCards.set(text, {
+                            id: `w_${index}`,
+                            type: CARD_TYPES.WORD,
+                            text: text,
+                            category: card.カテゴリ
+                        });
+                    }
+                 } else if (card.text && card.category) { // 予備: ヘッダーが 'text' と 'category' だった場合
+                     const text = card.text;
+                    if (!uniqueCards.has(text)) { 
+                        uniqueCards.set(text, {
+                            id: `w_${index}`,
+                            type: CARD_TYPES.WORD,
+                            text: text,
+                            category: card.category
+                        });
+                    }
+                 }
+            });
+            WORD_CARDS = Array.from(uniqueCards.values());
+            DECK_TEMPLATE.push(...WORD_CARDS);
+            console.log(`ワードカード読み込み完了: ${WORD_CARDS.length} 枚`);
+
+            // 3. エンディングカードの処理 (埋め込みデータから)
+            const parsedEndingCards = parseCSV(endingCardCsvData);
+            let endingCardCount = 0;
+            parsedEndingCards.forEach((card, index) => {
+                if (card.text && card.category) {
+                    // 各カードを2枚ずつデッキに入れる (合計30枚)
+                    for (let i = 0; i < 2; i++) {
+                         DECK_TEMPLATE.push({
+                            id: `e_${index}_${i}`,
+                            type: CARD_TYPES.ENDING,
+                            text: card.text,
+                            category: card.category
+                        });
+                        endingCardCount++;
+                    }
+                }
+            });
+            console.log(`エンディングカード読み込み完了: ${endingCardCount} 枚`);
+
+
+            // 4. 特殊カード (インターセプト) の処理 (埋め込みデータから)
+            const parsedSpecialCards = parseCSV(specialCardCsvData);
+            parsedSpecialCards.forEach(card => {
+                const cardType = card.type.toUpperCase(); // INTERCEPT
+                const count = parseInt(card.count, 10);
+                if (CARD_TYPES[cardType] && cardType === CARD_TYPES.INTERCEPT && count > 0) { // インターセプトのみ
+                    for (let i = 0; i < count; i++) {
+                        DECK_TEMPLATE.push({
+                            id: `i_${i}`, // i_0
+                            type: CARD_TYPES[cardType],
+                            text: card.text,
+                            category: card.category
+                        });
+                    }
+                    console.log(`${CARD_TYPES[cardType]} カード読み込み完了: ${count} 枚`);
+                }
+            });
+
+            console.log(`カードデータ構築完了。合計 ${DECK_TEMPLATE.length} 枚`);
+
+            // 5. UIの有効化
+            loadingStatus.classList.add('hidden');
+            startGameBtn.disabled = false;
+            handleOpponentModeChange(); // ボタンのテキストを正しく設定
+
+        } catch (error) {
+            console.error("カードデータの読み込みエラー:", error);
+            loadingStatus.textContent = `カード読込エラー: ${error.message}`;
+            loadingStatus.classList.add('text-red-500');
+        }
+    }
+
+
+    // --- Gemini API 呼び出し ---
+
+    /**
+     * Gemini APIを呼び出す
+     * @param {string} systemPrompt - AIへの指示
+     * @param {string} userQuery - ユーザーの入力（現在のゲーム状況など）
+     * @param {object} responseSchema - 期待するJSONスキーマ
+     * @returns {Promise<object>} - APIからのレスポンス(JSON)
+     */
+    async function callGeminiAPI(systemPrompt, userQuery, responseSchema) {
+        console.log("Gemini API 呼び出し:", { systemPrompt, userQuery, responseSchema });
+        
+        const payload = {
+            contents: [{ parts: [{ text: userQuery }] }],
+            systemInstruction: {
+                parts: [{ text: systemPrompt }]
+            },
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: responseSchema,
+                temperature: 1.0,
+                topK: 1,
+                topP: 1,
+            }
+        };
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                console.error("API Error Response:", errorBody);
+                throw new Error(`APIリクエスト失敗: ${response.status} ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            console.log("API Raw Result:", result);
+
+            const candidate = result.candidates?.[0];
+            if (candidate && candidate.content?.parts?.[0]?.text) {
+                const jsonText = candidate.content.parts[0].text;
+                return JSON.parse(jsonText);
+            } else {
+                console.warn("APIから期待したレスポンスが得られませんでした。", result);
+                if (result.promptFeedback) {
+                    console.error("Prompt Feedback:", result.promptFeedback);
+                    throw new Error(`APIエラー: ${result.promptFeedback.blockReason}`);
+                }
+                throw new Error("APIが空のレスポンスを返しました。");
+            }
+        } catch (error) {
+            console.error("callGeminiAPIエラー:", error);
+            throw error; // エラーを呼び出し元に伝播させる
+        }
+    }
+
+    // --- ゲームロジック (AI) ---
+
+    /**
+     * AIの「語る」ターンを処理する
+     */
+    async function triggerAINarrate() {
+        console.log("AIの「語る」ターン開始");
+        
+        const aiPlayer = localGameState.players.find(p => p.id === userId);
+        const opponent = localGameState.players.find(p => p.id !== userId);
+        if (!aiPlayer) return;
+
+        // 1. AIの手札から「ワード」カードを1枚選ぶ
+        const wordCard = aiPlayer.hand.find(c => c.type === CARD_TYPES.WORD);
+        
+        // 2. もしワードカードがない場合（＝パス）
+        if (!wordCard) {
+            console.log("AI: 語るためのワードカードがないためパスします。");
+            // パス処理
+            const logEntry = {
+                type: 'pass',
+                player: aiPlayer.name,
+                text: "語るためのカードがなく、パスした。"
+            };
+            
+            try {
+                const gameDocRef = doc(db, `artifacts/${appId}/public/data/narrative-duels`, localGameState.id);
+                await updateDoc(gameDocRef, {
+                    narrativeLog: [...localGameState.narrativeLog, logEntry],
+                    currentTurn: opponent.id, // ターンを相手に渡す
+                    lastActionTimestamp: serverTimestamp()
+                });
+            } catch (error) {
+                console.error("AI パス処理エラー:", error);
+            }
+            return;
+        }
+
+        // 3. AIが物語を考える (API呼び出し)
+        const systemPrompt = `あなたはTRPGの熟練ゲームマスターです。以下の制約に従い、物語を1文で紡いでください。
+- 形式: JSON
+- あなたの手番です。
+- 目的: 勝利条件（トラッシュ${localGameState.config.score}枚）の達成。
+- 物語は必ず、指定された「使用カード」の単語（${wordCard.text}）を含めてください。
+- 物語は、直前のログ（${localGameState.narrativeLog.slice(-1)[0]?.text || "物語の始まり"}）に続く内容にしてください。`;
+
+        const userQuery = `現在の状況:
+- あなたの手札: ${aiPlayer.hand.map(c => `${c.text}(${c.category})`).join(", ")}
+- あなたのトラッシュ: ${aiPlayer.trash}枚
+- 相手のトラッシュ: ${opponent.trash}枚
+- 直前の物語: ${localGameState.narrativeLog.slice(-1)[0]?.text || "なし"}
+- 使用するカード: ${wordCard.text} (${wordCard.category})
+
+JSONで、このカードを使った物語を1文生成してください。`;
+
+        const responseSchema = {
+            type: "OBJECT",
+            properties: {
+                "narrative": { "type": "STRING" }
+            },
+            required: ["narrative"]
+        };
+
+        try {
+            const result = await callGeminiAPI(systemPrompt, userQuery, responseSchema);
+            const narrativeText = result.narrative;
+
+            console.log("AIの物語:", narrativeText);
+
+            // 4. Firestoreを更新
+            const logEntry = {
+                type: 'narrate',
+                player: aiPlayer.name,
+                card: wordCard.text,
+                category: wordCard.category,
+                text: narrativeText
+            };
+
+            // 手札からカードを削除、トラッシュを増やす
+            const updatedHand = aiPlayer.hand.filter(c => c.id !== wordCard.id);
+            const newTrashCount = aiPlayer.trash + 1;
+            
+            // デッキからカードを引く
+            let updatedDeck = [...localGameState.deck];
+            const drawnCard = drawCards(updatedDeck, 1);
+            updatedHand.push(...drawnCard.cards);
+            updatedDeck = drawnCard.deck;
+
+            // プレイヤー情報を更新
+            const updatedPlayers = localGameState.players.map(p => {
+                if (p.id === aiPlayer.id) {
+                    return { ...p, hand: updatedHand, trash: newTrashCount };
+                }
+                return p;
+            });
+            
+            const gameDocRef = doc(db, `artifacts/${appId}/public/data/narrative-duels`, localGameState.id);
+            await updateDoc(gameDocRef, {
+                players: updatedPlayers,
+                deck: updatedDeck,
+                narrativeLog: [...localGameState.narrativeLog, logEntry],
+                currentTurn: opponent.id, // ターンを相手に渡す
+                lastActionTimestamp: serverTimestamp()
+            });
+
+        } catch (error) {
+            console.error("AI「語る」処理エラー:", error);
+            // エラー時はリトライ（またはパス）
+            setTimeout(triggerAINarrate, API_RETRY_DELAY);
+        }
+    }
+
+    /**
+     * AIの「妨害」チェックを処理する
+     */
+    async function triggerAIIntercept() {
+        console.log("AIの「妨害」チェック開始");
+        
+        const aiPlayer = localGameState.players.find(p => p.id === userId);
+        const opponent = localGameState.players.find(p => p.id !== userId);
+        if (!aiPlayer) return;
+
+        const lastLog = localGameState.narrativeLog.slice(-1)[0];
+        if (!lastLog || lastLog.type !== 'narrate' || lastLog.player === aiPlayer.name) {
+            console.log("AI: 妨害対象のアクションがないためスキップ");
+            return; // 妨害対象でない
+        }
+
+        // 妨害に使えるカードを探す
+        const interceptCard = aiPlayer.hand.find(c => c.type === CARD_TYPES.INTERCEPT);
+        // 相手のカテゴリ（lastLog.category）と同じカテゴリのワードカードを探す
+        const wordCard = aiPlayer.hand.find(c => c.type === CARD_TYPES.WORD && c.category === lastLog.category);
+
+        if (!interceptCard && !wordCard) {
+            console.log("AI: 妨害に使えるカードがないためパスします。");
+            return; // 妨害できない
+        }
+
+        // 3. AIが妨害するか考える (API呼び出し)
+        const systemPrompt = `あなたはTRPGの熟練ゲームマスターです。以下の制約に従い、相手の物語に妨害（インターセプト）するかどうかを決定してください。
+- 形式: JSON
+- 相手のターンです。
+- 目的: 相手の勝利（トラッシュ${opponent.trash}枚）を阻止し、自分の勝利を目指す。
+- 相手は物語を紡ぎました。あなたは妨害カードを持っています。
+- 妨害は相手の得点を防ぎますが、あなたのカードも消費します。
+- 相手のトラッシュ（${opponent.trash}枚）が勝利に近いほど、妨害の優先度は上がります。
+- 決定（action）は "INTERCEPT_WORD", "INTERCEPT_CARD", "PASS" のいずれかです。
+- "INTERCEPT_WORD" は「ワード」カード（カテゴリ一致）で妨害します。
+- "INTERCEPT_CARD" は「インターセプト」カードで妨害します。
+- 妨害に使えるカードがない場合は "PASS" になります。`;
+
+        const userQuery = `現在の状況:
+- あなたの手札: ${aiPlayer.hand.map(c => `${c.text}(${c.category})`).join(", ")}
+- あなたのトラッシュ: ${aiPlayer.trash}枚
+- 相手のトラッシュ: ${opponent.trash}枚
+- 妨害対象の物語: 「${lastLog.text}」（使用カード: ${lastLog.card}(${lastLog.category})）
+- 妨害に使えるカード:
+  - ワードカード (カテゴリ一致): ${wordCard ? wordCard.text : "なし"}
+  - インターセプトカード: ${interceptCard ? "あり" : "なし"}
+
+JSONで、あなたの行動（action）と、妨害する場合の物語（narrative）を1文生成してください。パスする場合は narrative は空にしてください。`;
+
+        const responseSchema = {
+            type: "OBJECT",
+            properties: {
+                "action": { "type": "STRING" },
+                "narrative": { "type": "STRING" }
+            },
+            required: ["action"]
+        };
+
+        try {
+            const result = await callGeminiAPI(systemPrompt, userQuery, responseSchema);
+            console.log("AIの妨害決定:", result);
+
+            let action = result.action;
+            const narrativeText = result.narrative || "（妨害）";
+
+            // AIの決定を検証
+            if (action === "INTERCEPT_WORD" && !wordCard) action = "PASS";
+            if (action === "INTERCEPT_CARD" && !interceptCard) action = "PASS";
+            
+            if (action === "PASS") {
+                console.log("AI: 妨害しないことを決定しました。");
+                return;
+            }
+            
+            // 妨害処理
+            const usedCard = (action === "INTERCEPT_WORD") ? wordCard : interceptCard;
+            const logEntry = {
+                type: 'intercept',
+                player: aiPlayer.name,
+                card: usedCard.text,
+                category: usedCard.category,
+                text: narrativeText,
+                targetLogIndex: localGameState.narrativeLog.length - 1 // 直前のログを対象
+            };
+            
+            // 手札からカードを削除、トラッシュを増やす
+            const updatedHand = aiPlayer.hand.filter(c => c.id !== usedCard.id);
+            const newTrashCount = aiPlayer.trash + 1;
+
+            // デッキからカードを引く
+            let updatedDeck = [...localGameState.deck];
+            const drawnCard = drawCards(updatedDeck, 1);
+            updatedHand.push(...drawnCard.cards);
+            updatedDeck = drawnCard.deck;
+
+            // プレイヤー情報を更新
+            const updatedPlayers = localGameState.players.map(p => {
+                if (p.id === aiPlayer.id) {
+                    return { ...p, hand: updatedHand, trash: newTrashCount };
+                }
+                return p;
+            });
+            
+            const gameDocRef = doc(db, `artifacts/${appId}/public/data/narrative-duels`, localGameState.id);
+            await updateDoc(gameDocRef, {
+                players: updatedPlayers,
+                deck: updatedDeck,
+                narrativeLog: [...localGameState.narrativeLog, logEntry],
+                // currentTurn は変更しない（妨害は相手のターン中に行われる）
+                lastActionTimestamp: serverTimestamp()
+            });
+
+        } catch (error) {
+            console.error("AI「妨害」処理エラー:", error);
+            // エラー時はリトライ（またはパス）
+        }
+    }
+
+
+    // --- ゲームロジック (コア) ---
+
+    /**
+     * デッキをシャッフルする (Fisher-Yates)
+     */
+    function shuffleDeck(deck) {
+        let shuffled = [...deck];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    }
+
+    /**
+     * デッキからカードを引く
+     */
+    function drawCards(deck, count) {
+        let currentDeck = [...deck];
+        let drawnCards = [];
+        if (currentDeck.length < count) {
+            console.warn("デッキが足りません。リシャッフルします。");
+            // TODO: トラッシュ（使用済み）をデッキに戻すロジック（今回は未実装）
+            // とりあえずあるだけ引く
+            drawnCards = currentDeck;
+            currentDeck = [];
+        } else {
+            drawnCards = currentDeck.splice(0, count);
+        }
+        return { cards: drawnCards, deck: currentDeck };
+    }
+
+    /**
+     * ゲームセッションを開始する
+     * @param {string} gameId - FirestoreのドキュメントID
+     */
+    function startGame(gameId) {
+        console.log(`ゲーム ${gameId} を開始します。`);
+        localGameState = null; // 状態をリセット
+        selectedNarrateCardId = null;
+        selectedInterceptCardId = null;
+
+        // 画面切り替え
+        modeSelectionScreen.classList.add('hidden');
+        gameScreen.classList.remove('hidden');
+        // 修正：bodyのflexを解除して、ゲーム画面が全高に広がるようにする
+        document.body.classList.remove('title-screen-active');
+
+        // ゲームID表示
+        gameIdDisplay.textContent = gameId;
+
+        // リアルタイムリスナーを設定
+        const gameDocRef = doc(db, `artifacts/${appId}/public/data/narrative-duels`, gameId);
+        gameUnsubscribe = onSnapshot(gameDocRef, (doc) => {
+            if (doc.exists()) {
+                const gameData = doc.data();
+                console.log("ゲームデータ受信:", gameData);
+                localGameState = { ...gameData, id: doc.id }; // ローカル状態を更新
+                updateUI(localGameState);
+                
+                // AIのターンかどうかチェック
+                if (gameData.currentTurn === userId && gameData.players.find(p => p.id === userId)?.isAI) {
+                    // 相手のアクションから少し（2秒）待ってからAIのターンを開始
+                    setTimeout(triggerAINarrate, API_RETRY_DELAY);
+                }
+                // AIの妨害チェック
+                if (gameData.currentTurn !== userId && gameData.players.find(p => p.id === userId)?.isAI) {
+                     setTimeout(triggerAIIntercept, API_RETRY_DELAY);
+                }
+
+            } else {
+                console.error("ゲームデータが見つかりません。");
+                showMessage("エラー", "ゲームデータが見つかりませんでした。");
+                stopGame();
+            }
+        }, (error) => {
+            console.error("onSnapshotエラー:", error);
+            showMessage("エラー", "ゲームサーバーとの接続に失敗しました。");
+            stopGame();
+        });
+    }
+
+    /**
+     * ゲームセッションを終了する
+     */
+    function stopGame() {
+        if (gameUnsubscribe) {
+            gameUnsubscribe();
+            gameUnsubscribe = null;
+        }
+        localGameState = null;
+        gameScreen.classList.add('hidden');
+        modeSelectionScreen.classList.remove('hidden');
+        // 修正：bodyにflexを戻し、タイトル画面を中央に配置
+        document.body.classList.add('title-screen-active');
+
+        console.log("ゲームを終了しました。");
+    }
+
+    /**
+     * 新しいゲームを作成する (AI対戦)
+     */
+    async function createNewGame() {
+        console.log("新しいゲームを作成中 (AI対戦)...");
+        startGameBtn.disabled = true;
+        
+        const selectedMode = gameModeSelect.value;
+        const config = GAME_CONFIG[selectedMode];
+        const playerName = playerNameInput.value || "物語士";
+
+        try {
+            // 1. デッキ準備
+            let deck = shuffleDeck(DECK_TEMPLATE);
+            
+            // 2. プレイヤー初期手札
+            const p1Draw = drawCards(deck, HAND_SIZE);
+            const p1Hand = p1Draw.cards;
+            deck = p1Draw.deck;
+            
+            const p2Draw = drawCards(deck, HAND_SIZE);
+            const p2Hand = p2Draw.cards;
+            deck = p2Draw.deck;
+
+            // 3. ゲームデータ作成
+            const gameData = {
+                config: config,
+                players: [
+                    { id: userId, name: playerName, hand: p1Hand, trash: 0, isAI: false },
+                    { id: `AI_${crypto.randomUUID()}`, name: "AI", hand: p2Hand, trash: 0, isAI: true }
+                ],
+                deck: deck,
+                narrativeLog: [
+                    { type: 'system', text: `物語が始まります。勝利条件: ${config.name} (${config.score}枚)` }
+                ],
+                currentTurn: userId, // プレイヤー1から
+                createdAt: serverTimestamp(),
+                lastActionTimestamp: serverTimestamp()
+            };
+
+            // 4. Firestoreに保存
+            const collectionRef = collection(db, `artifacts/${appId}/public/data/narrative-duels`);
+            const docRef = await addDoc(collectionRef, gameData);
+            
+            console.log("ゲーム作成成功:", docRef.id);
+            startGame(docRef.id);
+
+        } catch (error) {
+            console.error("Create Game Error:", error);
+            showMessage("エラー", `ゲームの作成に失敗しました: ${error.message}`);
+        } finally {
+            startGameBtn.disabled = false;
+        }
+    }
+
+    /**
+     * 既存のゲームに参加する
+     */
+    async function joinExistingGame() {
+        const gameId = joinGameIdInput.value.trim();
+        if (!gameId) {
+            showMessage("エラー", "参加コード（Game ID）を入力してください。");
+            return;
+        }
+
+        startGameBtn.disabled = true; // 参加ボタンとして機能させるため
+        console.log(`${gameId} に参加しようとしています...`);
+        
+        try {
+            const gameDocRef = doc(db, `artifacts/${appId}/public/data/narrative-duels`, gameId);
+            const gameDoc = await getDoc(gameDocRef);
+
+            if (!gameDoc.exists()) {
+                showMessage("エラー", "指定されたゲームが見つかりません。");
+                startGameBtn.disabled = false;
+                return;
+            }
+
+            const gameData = gameDoc.data();
+            
+            // AI戦のみなので、P1 (userId) として再接続する
+            const playerExists = gameData.players.some(p => p.id === userId);
+
+            if (playerExists) {
+                console.log("プレイヤーとして再接続します。");
+                startGame(gameId);
+            } else {
+                 console.log("プレイヤーとして参加します (AI戦のP2にはなれませんが、ロジックはここ)");
+                 // TODO: 実際の対人戦では、P2として参加するロジックが必要
+                 showMessage("エラー", "このゲームはAI戦専用か、満員です。現在、AI戦への途中参加はP1としてのみ可能です。");
+                 startGameBtn.disabled = false;
+            }
+
+        } catch (error) {
+            console.error("Join Game Error:", error);
+            showMessage("エラー", `ゲームへの参加に失敗しました: ${error.message}`);
+            startGameBtn.disabled = false;
+        }
+    }
+
+    /**
+     * 対戦相手モード選択に応じてUIを切り替える
+     */
+    function handleOpponentModeChange() {
+        // データロード完了前なら何もしない
+        if (DECK_TEMPLATE.length === 0) {
+            startGameBtn.textContent = "読み込み中...";
+            return;
+        }
+        
+        const selectedMode = opponentModeSelect.value;
+        if (selectedMode === 'AI') {
+            joinGameIdInput.classList.add('hidden');
+            startGameBtn.textContent = "新しい物語を開始する (対AI)";
+            startGameBtn.classList.remove('btn-crystal-gold');
+            startGameBtn.classList.add('btn-crystal');
+            startGameBtn.disabled = false;
+        } else { // HUMAN
+            joinGameIdInput.classList.remove('hidden');
+            startGameBtn.textContent = "既存の物語に参加する (対人)";
+            startGameBtn.classList.remove('btn-crystal');
+            startGameBtn.classList.add('btn-crystal-gold');
+            startGameBtn.disabled = false;
+        }
+    }
+
+
+    /**
+     * プレイヤーが「語る」ボタンを押した時の処理
+     */
+    async function handleNarrate() {
+        const narrativeText = narrateInput.value.trim();
+        if (!narrativeText || !selectedNarrateCardId) {
+            showMessage("エラー", "物語と、「語る」に使用する「ワード」カードを1枚選択してください。");
+            return;
+        }
+
+        narrateBtn.disabled = true;
+        
+        try {
+            const me = localGameState.players.find(p => p.id === userId);
+            const opponent = localGameState.players.find(p => p.id !== userId);
+            const usedCard = me.hand.find(c => c.id === selectedNarrateCardId);
+
+            if (!usedCard) {
+                console.error("選択されたカードが手札にありません。");
+                return;
+            }
+            
+            // 1. ログエントリ作成
+            const logEntry = {
+                type: 'narrate',
+                player: me.name,
+                card: usedCard.text,
+                category: usedCard.category,
+                text: narrativeText
+            };
+            
+            // 2. プレイヤーの状態を更新
+            // 手札からカードを削除、トラッシュを増やす
+            const updatedHand = me.hand.filter(c => c.id !== usedCard.id);
+            const newTrashCount = me.trash + 1;
+            
+            // デッキからカードを引く
+            let updatedDeck = [...localGameState.deck];
+            const drawnCard = drawCards(updatedDeck, 1);
+            updatedHand.push(...drawnCard.cards);
+            updatedDeck = drawnCard.deck;
+            
+            // プレイヤー情報を更新
+            const updatedPlayers = localGameState.players.map(p => {
+                if (p.id === me.id) {
+                    return { ...p, hand: updatedHand, trash: newTrashCount };
+                }
+                return p;
+            });
+
+            // 3. Firestore更新
+            const gameDocRef = doc(db, `artifacts/${appId}/public/data/narrative-duels`, localGameState.id);
+            await updateDoc(gameDocRef, {
+                players: updatedPlayers,
+                deck: updatedDeck,
+                narrativeLog: [...localGameState.narrativeLog, logEntry],
+                currentTurn: opponent.id, // ターンを相手に渡す
+                lastActionTimestamp: serverTimestamp()
+            });
+            
+            // 4. UIリセット
+            narrateInput.value = "";
+            selectedNarrateCardId = null;
+
+        } catch (error) {
+            console.error("Handle Narrate Error:", error);
+            showMessage("エラー", `物語を紡げませんでした: ${error.message}`);
+            narrateBtn.disabled = false;
+        }
+    }
+
+    /**
+     * プレイヤーが「妨害」ボタンを押した時の処理
+     * @param {'WORD' | 'INTERCEPT'} interceptType - 妨害の種類
+     */
+    async function handleIntercept(interceptType) {
+        if (!selectedInterceptCardId) {
+            showMessage("エラー", "妨害に使用するカードを選択してください。");
+            return;
+        }
+
+        interceptWordBtn.disabled = true;
+        interceptCardBtn.disabled = true;
+        
+        try {
+            const me = localGameState.players.find(p => p.id === userId);
+            const opponent = localGameState.players.find(p => p.id !== userId);
+            const usedCard = me.hand.find(c => c.id === selectedInterceptCardId);
+
+            if (!usedCard) {
+                console.error("選択されたカードが手札にありません。");
+                return;
+            }
+            
+            // 1. ログエントリ作成
+            const logEntry = {
+                type: 'intercept',
+                player: me.name,
+                card: usedCard.text,
+                category: usedCard.category,
+                text: `${usedCard.text}（${interceptType}）で物語に割り込んだ。`,
+                targetLogIndex: localGameState.narrativeLog.length - 1 // 直前のログを対象
+            };
+
+            // 2. プレイヤーの状態を更新
+            // 手札からカードを削除、トラッシュを増やす
+            const updatedHand = me.hand.filter(c => c.id !== usedCard.id);
+            const newTrashCount = me.trash + 1;
+            
+            // デッキからカードを引く
+            let updatedDeck = [...localGameState.deck];
+            const drawnCard = drawCards(updatedDeck, 1);
+            updatedHand.push(...drawnCard.cards);
+            updatedDeck = drawnCard.deck;
+            
+            // プレイヤー情報を更新
+            const updatedPlayers = localGameState.players.map(p => {
+                if (p.id === me.id) {
+                    return { ...p, hand: updatedHand, trash: newTrashCount };
+                }
+                return p;
+            });
+            
+            // 3. Firestore更新
+            const gameDocRef = doc(db, `artifacts/${appId}/public/data/narrative-duels`, localGameState.id);
+            await updateDoc(gameDocRef, {
+                players: updatedPlayers,
+                deck: updatedDeck,
+                narrativeLog: [...localGameState.narrativeLog, logEntry],
+                // currentTurn は変更しない
+                lastActionTimestamp: serverTimestamp()
+            });
+            
+            // 4. UIリセット
+            selectedInterceptCardId = null;
+
+        } catch (error) {
+            console.error("Handle Intercept Error:", error);
+            showMessage("エラー", `妨害に失敗しました: ${error.message}`);
+        }
+        // ボタンの再有効化は updateUI で行われる
+    }
+
+
+    // --- UI 更新 ---
+
+    /**
+     * ゲームデータに基づいてUI全体を更新する
+     * @param {object} gameData - Firestoreから取得したゲームデータ
+     */
+    function updateUI(gameData) {
+        if (!gameData) return;
+
+        const config = gameData.config;
+        const me = gameData.players.find(p => p.id === userId) || gameData.players[0]; // 自分がいない場合はP1を仮の自分とする（観戦用）
+        const opponent = gameData.players.find(p => p.id !== userId) || gameData.players[1];
+        
+        const isMyTurn = gameData.currentTurn === me.id;
+        
+        // 1. ステータス表示
+        p1Name.textContent = gameData.players[0].name;
+        p1Stats.textContent = `${gameData.players[0].trash} / ${config.score} 枚`;
+        
+        p2Name.textContent = gameData.players[1].name;
+        p2Stats.textContent = `${gameData.players[1].trash} / ${config.score} 枚`;
+        
+        turnIndicator.textContent = isMyTurn ? "あなたのターン" : "相手のターン";
+        turnIndicator.className = isMyTurn ? "value text-yellow-300" : "value text-gray-400";
+
+        // 2. ログの表示
+        renderLog(gameData.narrativeLog);
+        
+        // 3. 手札の表示
+        renderHand(me.hand, isMyTurn);
+
+        // 4. アクションボタンの制御
+        const lastLog = gameData.narrativeLog.slice(-1)[0];
+        
+        // 「語る」ボタン
+        // 自分のターンで、「語る」カードが選択されている場合
+        narrateBtn.disabled = !(isMyTurn && selectedNarrateCardId);
+        narrateInput.disabled = !isMyTurn;
+
+        // 「妨害」ボタン
+        // 相手のターンで、直前のアクションが「語る」で、
+        // かつ妨害カードが選択されている場合
+        const canIntercept = !isMyTurn && lastLog?.type === 'narrate' && lastLog.player !== me.name;
+        
+        // 妨害カード（ワード）が使えるか
+        const selectedWordIntercept = me.hand.find(c => c.id === selectedInterceptCardId && c.type === CARD_TYPES.WORD && c.category === lastLog?.category);
+        interceptWordBtn.disabled = !(canIntercept && selectedWordIntercept);
+
+        // 妨害カード（インターセプト）が使えるか
+        const selectedCardIntercept = me.hand.find(c => c.id === selectedInterceptCardId && c.type === CARD_TYPES.INTERCEPT);
+        interceptCardBtn.disabled = !(canIntercept && selectedCardIntercept);
+        
+        // 5. 勝敗チェック
+        const p1Win = gameData.players[0].trash >= config.score;
+        const p2Win = gameData.players[1].trash >= config.score;
+        if (p1Win || p2Win) {
+            const winner = p1Win ? gameData.players[0].name : gameData.players[1].name;
+            showMessage("決着", `物語は完成した。\n勝者: ${winner}`);
+            stopGame();
+        }
+    }
+
+    /**
+     * 物語ログを描画する
+     */
+    function renderLog(log) {
+        let html = '';
+        (log || []).forEach((entry, index) => {
+            let entryHtml = '';
+            switch (entry.type) {
+                case 'system':
+                    entryHtml = `<div class="log-entry log-system">${entry.text}</div>`;
+                    break;
+                case 'narrate':
+                    entryHtml = `<div class="log-entry log-narrate">
+                        <strong>${entry.player}</strong> (使用: ${entry.card} [${entry.category}])<br>
+                        「${entry.text}」
+                    </div>`;
+                    break;
+                case 'intercept':
+                    entryHtml = `<div class="log-entry log-intercept">
+                        <strong>${entry.player}</strong> (妨害: ${entry.card} [${entry.category}])<br>
+                        「${entry.text}」
+                    </div>`;
+                    break;
+                case 'pass':
+                     entryHtml = `<div class="log-entry log-pass">
+                        <strong>${entry.player}</strong> がパスした。<br>
+                        ${entry.text}
+                    </div>`;
+                    break;
+            }
+            html = entryHtml + html; // 新しいログを上に追加
+        });
+        narrativeLog.innerHTML = html;
+        narrativeLog.scrollTop = narrativeLog.scrollHeight; // 最下部にスクロール
+    }
+
+
+    /**
+     * 自分の手札を描画する
+     */
+    function renderHand(myHand, isMyTurn) {
+        playerHand.innerHTML = ''; // 手札をクリア
+        
+        (myHand || []).forEach(card => {
+            const cardEl = document.createElement('div');
+            cardEl.className = `hand-card card-type-${card.type}`;
+            cardEl.dataset.cardId = card.id;
+            
+            // 2行表示
+            cardEl.innerHTML = `
+                <span class="card-text block">${card.text}</span>
+                <span class="card-category block">${card.category}</span>
+            `;
+
+            // カード選択ロジック
+            cardEl.addEventListener('click', () => {
+                // 選択状態をリセット
+                selectedNarrateCardId = null;
+                selectedInterceptCardId = null;
+                
+                // 他のカードのハイライトを解除
+                document.querySelectorAll('.hand-card').forEach(c => c.classList.remove('selected-card'));
+                
+                // このカードを選択
+                cardEl.classList.add('selected-card');
+                
+                if (card.type === CARD_TYPES.WORD) {
+                    if (isMyTurn) {
+                        selectedNarrateCardId = card.id; // 語る用
+                    }
+                    selectedInterceptCardId = card.id; // 妨害（ワード）用
+                }
+                
+                if (card.type === CARD_TYPES.INTERCEPT) {
+                    selectedInterceptCardId = card.id; // 妨害（カード）用
+                }
+
+                // UI（ボタン）の状態を即時更新
+                updateUI(localGameState); 
+            });
+
+            playerHand.appendChild(cardEl);
+        });
+    }
+
+    /**
+     * メッセージモーダルを表示する
+     */
+    function showMessage(title, text) {
+        messageTitle.textContent = title;
+        messageText.textContent = text;
+        messageModal.classList.remove('hidden');
+    }
+
+    // --- イベントリスナー ---
+    
+    // ゲーム開始ボタンのクリックイベントハンドラ
+    startGameBtn.addEventListener('click', () => {
+        const selectedOpponentMode = opponentModeSelect.value;
+        if (selectedOpponentMode === 'AI') {
+            createNewGame();
+        } else { // HUMAN
+            joinExistingGame();
+        }
+    });
+
+    // 対戦相手選択の変更イベント
+    opponentModeSelect.addEventListener('change', handleOpponentModeChange);
+
+    // ルールブックを開くボタン
+    openRulebookBtn.addEventListener('click', () => {
+        // TODO: ルールブック表示ロジックを実装 (例: 別モーダルや新しいウィンドウで表示)
+        showMessage("ルールブック", "ルールブックの内容はここに表示されます。\nこれはまだ開発中です！");
+    });
+
+    // アクションボタン
+    narrateBtn.addEventListener('click', handleNarrate);
+    interceptWordBtn.addEventListener('click', () => handleIntercept('WORD'));
+    interceptCardBtn.addEventListener('click', () => handleIntercept('INTERCEPT'));
+
+    // モーダル閉じる
+    messageCloseBtn.addEventListener('click', () => {
+        messageModal.classList.add('hidden');
+    });
+
+    // --- 起動処理 ---
+    
+    /**
+     * ページの読み込み完了時に実行
+     */
+    window.onload = async () => {
+        
+        // 1. Firebaseの初期化 (先に実行)
+        try {
+            console.log("Firebaseを初期化中...");
+            setLogLevel('debug');
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            // 2. 認証
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    console.log("認証成功 (既存):", user.uid);
+                    userId = user.uid;
+                }
+            });
+
+            // トークンまたは匿名でサインイン
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                console.log("カスタムトークンでサインイン中...");
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                console.log("匿名でサインイン中...");
+                await signInAnonymously(auth);
+            }
+
+        } catch (error) {
+            console.error("Firebase初期化エラー:", error);
+            document.body.innerHTML = `<div class="text-red-500 p-4">Firebaseの初期化に失敗しました。設定を確認してください。 ${error.message}</div>`;
+            return; // Firebaseが失敗したら以降の処理を中断
+        }
+        
+        // 3. カードデータの非同期読み込み
+        await loadGameData();
+        
+        // 4. UIの初期設定
+        handleOpponentModeChange(); // UIを正しく設定
+    };
+
+</script>
+
+</body>
+</html>
+
