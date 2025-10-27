@@ -219,7 +219,18 @@
 
         // 環境変数からの設定
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        // __firebase_configが定義されていない場合のフォールバック設定
+        const DUMMY_FIREBASE_CONFIG = {
+            apiKey: "dummy-api-key",
+            authDomain: "dummy-project.firebaseapp.com",
+            projectId: "dummy-project",
+            storageBucket: "dummy-project.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef1234567890abcdef",
+        };
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : DUMMY_FIREBASE_CONFIG;
+        
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Gemini API設定
@@ -593,9 +604,9 @@ I004,INTERCEPT,妨害,ドロー妨害,相手の次のドローフェイズをス
          * @param {Object} state - 最新のゲーム状態
          */
         function renderGameState(state) {
+            // 現在のユーザーがP1かP2かを決定（ここではシンプルにP1として扱う）
             const myPlayerId = state.players[PLAYER_1_ID].uid === userId ? PLAYER_1_ID : PLAYER_2_ID;
             const myPlayer = state.players[myPlayerId];
-            const opponentPlayer = state.players[myPlayerId === PLAYER_1_ID ? PLAYER_2_ID : PLAYER_1_ID];
             
             const isMyTurn = state.currentTurn === myPlayerId;
 
@@ -712,6 +723,20 @@ I004,INTERCEPT,妨害,ドロー妨害,相手の次のドローフェイズをス
          * 選択されたカードに基づいてアクションボタンの状態を更新する
          */
         function updateActionButtonState() {
+            if (!gameState || !gameState.currentTurn) return; // gameStateが未定義の場合は何もしない
+
+            // ターンプレイヤーでなければボタンを無効化
+            const myPlayerId = gameState.players[PLAYER_1_ID].uid === userId ? PLAYER_1_ID : PLAYER_2_ID;
+            const isMyTurn = gameState.currentTurn === myPlayerId;
+            const isAIProcessing = gameState.aiProcessing;
+
+            if (!isMyTurn || isAIProcessing) {
+                narrateButton.disabled = true;
+                interceptButton.disabled = true;
+                return;
+            }
+
+            // カードが選択されていない場合は両方無効
             if (!selectedCardId) {
                 narrateButton.disabled = true;
                 interceptButton.disabled = true;
@@ -719,18 +744,13 @@ I004,INTERCEPT,妨害,ドロー妨害,相手の次のドローフェイズをス
             }
 
             const selectedType = document.querySelector(`[data-card-id="${selectedCardId}"]`)?.dataset.cardType;
-            const isMyTurn = gameState && gameState.currentTurn === (gameState.players[PLAYER_1_ID].uid === userId ? PLAYER_1_ID : PLAYER_2_ID);
-            const isAIProcessing = gameState && gameState.aiProcessing;
-
-            // ターンとAI処理中でなければボタンを有効化
-            if (isMyTurn && !isAIProcessing) {
-                if (selectedType === CARD_TYPES.WORD || selectedType === CARD_TYPES.ENDING) {
-                    narrateButton.disabled = false;
-                    interceptButton.disabled = true;
-                } else if (selectedType === CARD_TYPES.INTERCEPT) {
-                    narrateButton.disabled = true;
-                    interceptButton.disabled = false;
-                }
+            
+            if (selectedType === CARD_TYPES.WORD || selectedType === CARD_TYPES.ENDING) {
+                narrateButton.disabled = false;
+                interceptButton.disabled = true;
+            } else if (selectedType === CARD_TYPES.INTERCEPT) {
+                narrateButton.disabled = true;
+                interceptButton.disabled = false;
             } else {
                 narrateButton.disabled = true;
                 interceptButton.disabled = true;
@@ -760,12 +780,6 @@ I004,INTERCEPT,妨害,ドロー妨害,相手の次のドローフェイズをス
                 return;
             }
 
-            // 物語にワードカードの単語が含まれているかチェック (必須ではないが推奨)
-            // if (usedCard.Type === CARD_TYPES.WORD && !narrativeText.includes(usedCard.Name)) {
-            //     showModal("警告", `使用したワード「${usedCard.Name}」を物語に含めることを推奨します。`);
-            //     return;
-            // }
-
             // UIを無効化
             narrateButton.disabled = true;
             interceptButton.disabled = true;
@@ -783,7 +797,8 @@ I004,INTERCEPT,妨害,ドロー妨害,相手の次のドローフェイズをス
             const newCard = gameState.deck[0];
             const updatedDeck = gameState.deck.slice(1);
             if (newCard) {
-                updates[`players.${myPlayerId}.hand`] = arrayUnion(newCard); // 既にupdatedHandはセットされているのでarrayUnionを使う
+                // arrayUnionを使うことで、Firestoreが配列操作を実行する
+                updates[`players.${myPlayerId}.hand`] = arrayUnion(newCard); 
             }
             updates.deck = updatedDeck;
 
@@ -811,12 +826,9 @@ I004,INTERCEPT,妨害,ドロー妨害,相手の次のドローフェイズをス
                 // 成功後にUIをリセット
                 narrateInput.value = '';
                 selectedCardId = null;
-                // updateDocでgameStateが更新されるため、renderGameStateが自動で走る
             } catch (error) {
                 console.error("物語アクションの更新エラー:", error);
                 showModal("エラー", "ゲーム状態の更新に失敗しました。再試行してください。");
-            } finally {
-                // updateDocのonSnapshotが走るので、ここではUIを再有効化しない
             }
         }
         
@@ -860,34 +872,32 @@ I004,INTERCEPT,妨害,ドロー妨害,相手の次のドローフェイズをス
             }
             updates.deck = updatedDeck;
             
-            // 3. 妨害ログを追加
-            updates.narrativeLog = arrayUnion({
+            // 3. 妨害ログを一時的に追加
+            const tempLog = {
                 playerId: myPlayerId,
                 narrative: logMessage,
                 usedCard: usedCard,
                 timestamp: Date.now(),
                 isIntercept: true,
-            });
+            };
 
             // 4. 妨害カードの効果処理
+            let newNarrativeLog = [...gameState.narrativeLog];
+
             switch (usedCard.ID) {
                 case 'I001': // 巻き戻し: 直前の物語を無効にし、ターンを継続する
-                    if (gameState.narrativeLog.length > 0) {
-                        const lastLog = gameState.narrativeLog[gameState.narrativeLog.length - 1];
-                        // 直前のログのplayerIdのトラッシュからカードを戻す (複雑なため、簡略化: ログのみ削除)
-                        // 本来はトラッシュからカードを戻す処理が必要だが、ここではログ削除のみとする
-                        updates.narrativeLog = gameState.narrativeLog.slice(0, -1).concat({
-                            ...lastLog,
-                            interrupted: true, // 妨害されたフラグ
-                        });
+                    if (newNarrativeLog.length > 0) {
+                        const lastLog = newNarrativeLog[newNarrativeLog.length - 1];
+                        // 直前のログのplayerIdのトラッシュからカードを戻す (簡略化のため、ここではログのフラグのみ更新)
+                        newNarrativeLog.pop(); // 最後のログを削除
+                        tempLog.narrative = `${logMessage} 直前の物語「${lastLog.narrative.substring(0, 20)}...」を無効化し、ターンを継続します。`;
                         
                         // 妨害成功した場合、ターンを継続 (相手のターンにしない)
                         nextTurn = myPlayerId;
-                        // ターンカウントはそのまま
-                        updates.currentTurn = nextTurn;
+                        updates.currentTurn = nextTurn; // ターンカウントはそのまま
                         
                     } else {
-                        logMessage += "しかし、物語がないため効果なし。";
+                        tempLog.narrative = `${logMessage} しかし、物語がないため効果なし。`;
                         updates.currentTurn = opponentPlayerId; // 失敗したのでターンは相手へ
                         updates.turnCount = gameState.turnCount + 1;
                     }
@@ -898,21 +908,20 @@ I004,INTERCEPT,妨害,ドロー妨害,相手の次のドローフェイズをス
                         const cardToTrash = opponentHand[Math.floor(Math.random() * opponentHand.length)];
                         updates[`players.${opponentPlayerId}.hand`] = arrayRemove(cardToTrash);
                         updates[`players.${opponentPlayerId}.trash`] = arrayUnion(cardToTrash);
-                        logMessage += `${getPlayerName(opponentPlayerId)}の【${cardToTrash.Name}】をトラッシュ！`;
+                        tempLog.narrative = `${logMessage} ${getPlayerName(opponentPlayerId)}の【${cardToTrash.Name}】をトラッシュ！`;
                     } else {
-                        logMessage += "しかし、相手の手札がないため効果なし。";
+                        tempLog.narrative = `${logMessage} しかし、相手の手札がないため効果なし。`;
                     }
                     updates.currentTurn = opponentPlayerId;
                     updates.turnCount = gameState.turnCount + 1;
                     break;
                 case 'I003': // ターン強制終了
-                    logMessage += `${getPlayerName(opponentPlayerId)}のターンを強制終了！`;
+                    tempLog.narrative = `${logMessage} ${getPlayerName(opponentPlayerId)}のターンを強制終了！`;
                     updates.currentTurn = opponentPlayerId; // 相手のターンに切り替え
                     updates.turnCount = gameState.turnCount + 1;
                     break;
                 case 'I004': // ドロー妨害
-                    logMessage += `${getPlayerName(opponentPlayerId)}の次のドローフェイズをスキップさせる。`;
-                    // ドロー処理は次回ターン処理に組み込まれるべきだが、簡略化のためログのみ
+                    tempLog.narrative = `${logMessage} ${getPlayerName(opponentPlayerId)}の次のドローフェイズをスキップさせる。`;
                     updates.currentTurn = opponentPlayerId; // 相手のターンに切り替え
                     updates.turnCount = gameState.turnCount + 1;
                     break;
@@ -922,8 +931,8 @@ I004,INTERCEPT,妨害,ドロー妨害,相手の次のドローフェイズをス
                     break;
             }
             
-            // 妨害ログのnarrativeを最終的なメッセージで更新
-            updates.narrativeLog = updates.narrativeLog.map(log => log.isIntercept ? {...log, narrative: logMessage} : log);
+            // ログの配列全体を更新 (arrayUnionだとログの順序が保証されないため)
+            updates.narrativeLog = [...newNarrativeLog, tempLog];
 
             try {
                 await updateDoc(gameRef, updates);
