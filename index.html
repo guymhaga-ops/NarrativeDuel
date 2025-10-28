@@ -3,991 +3,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>語合《ナラティブデュエル》</title>
+    <title>CSVコンテンツビューア</title>
+    <!-- Tailwind CSS CDNの読み込み -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@400;700&family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Interフォントの設定 -->
     <style>
-        /* --- 共通フォント設定 --- */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
-            font-family: 'Noto Sans JP', sans-serif;
-            @apply bg-gray-900 text-white min-h-screen;
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
         }
-        .font-noto-serif {
-            font-family: 'Noto Serif JP', sans-serif;
-        }
-        .font-shippori-mincho {
-            font-family: 'Shippori Mincho B1', serif;
-        }
-
-        /* --- タイトル画面スタイル --- */
-        #titleScreen {
-            @apply flex flex-col items-center justify-center min-h-screen p-8 text-center;
-        }
-        .title-h1 {
-            @apply font-shippori-mincho text-6xl md:text-8xl font-bold tracking-wider text-blue-300 mb-6;
-            text-shadow: 0 0 10px rgba(66, 153, 225, 0.5), 0 0 20px rgba(66, 153, 225, 0.3);
-        }
-        .title-card {
-            @apply bg-gray-800 p-8 rounded-xl shadow-2xl max-w-lg w-full border-t-4 border-blue-500;
-        }
-
-        /* --- ゲーム画面スタイル --- */
-        #gameScreen {
-            @apply hidden flex-col h-screen max-w-4xl mx-auto p-4;
-        }
-
-        /* --- UI要素のスタイル --- */
-        .card {
-            @apply p-3 rounded-xl shadow-lg border-2 cursor-pointer transition duration-150 ease-in-out transform hover:scale-[1.03] active:scale-[0.98];
-            min-height: 120px;
-            @apply bg-gray-700 border-gray-600 text-white flex flex-col justify-between;
-        }
-        .card-type-ENDING {
-            @apply bg-green-700 border-green-600;
-        }
-        .card-type-INTERCEPT {
-            @apply bg-yellow-700 border-yellow-600 text-gray-900;
-        }
-        .card-active {
-            @apply ring-4 ring-red-400 ring-offset-2 ring-offset-gray-900 !border-red-500 !bg-red-900/50;
-        }
-        .card-type-ENDING.card-active {
-            @apply ring-4 ring-green-400 !border-green-500 !bg-green-900/50;
-        }
-        .card-type-INTERCEPT.card-active {
-            @apply ring-4 ring-yellow-400 !border-yellow-500 !bg-yellow-900/50 text-white;
-        }
-        .card-disabled {
-            @apply cursor-default opacity-50 transform-none hover:scale-100;
-        }
-
-        /* --- テキスト入力エリアのスタイル --- */
-        #narrativeInput {
-            @apply w-full p-3 text-lg border-2 border-gray-600 rounded-lg bg-gray-800 text-white shadow-inner focus:ring-blue-500 focus:border-blue-500;
-        }
-
-        /* --- ボタンのスタイル --- */
-        .btn-primary {
-            @apply bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 ease-in-out disabled:bg-gray-500 disabled:cursor-not-allowed;
-        }
-        .btn-secondary {
-            @apply bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150 ease-in-out disabled:bg-gray-500 disabled:cursor-not-allowed;
-        }
-
-        /* --- メッセージ表示エリア --- */
-        #messageArea {
-            @apply p-3 text-center rounded-lg my-2 font-bold;
-            min-height: 48px;
-        }
-        .msg-info {
-            @apply bg-blue-800/50 text-blue-300 border border-blue-600;
-        }
-        .msg-error {
-            @apply bg-red-800/50 text-red-300 border border-red-600;
-        }
-        .msg-success {
-            @apply bg-green-800/50 text-green-300 border border-green-600;
-        }
-        .msg-waiting {
-            @apply bg-yellow-800/50 text-yellow-300 border border-yellow-600;
-        }
-
-        /* --- モーダルスタイル --- */
-        .modal {
-            @apply fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70;
-        }
-        .modal-content {
-            @apply bg-gray-800 p-6 rounded-xl shadow-2xl max-w-lg w-full transform transition-all duration-300 ease-out;
-        }
-        
-        /* --- 部屋ID表示のカスタムスタイル --- */
-        #gameIdDisplay {
-            @apply bg-gray-700 text-sm text-yellow-300 p-2 rounded-lg break-all;
-        }
-
     </style>
 </head>
-<body>
+<body class="p-4 sm:p-8 min-h-screen">
 
-    <!-- --- タイトル画面 --- -->
-    <div id="titleScreen">
-        <h1 class="title-h1">語合《ナラティブデュエル》</h1>
-        <div class="title-card">
-            <p class="text-gray-300 mb-6 font-noto-serif text-lg">
-                カードと物語で、未来の結末を奪い合え。
-            </p>
-            
-            <p id="envIndicator" class="text-sm text-gray-400 mt-1 mb-4">環境チェック中...</p>
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow-2xl">
+        <h1 class="text-3xl font-extrabold text-gray-900 mb-2 border-b pb-2">
+            CSVファイルの内容表示
+        </h1>
+        <p class="text-sm text-gray-500 mb-6">
+            URL: <code class="bg-gray-100 p-1 rounded text-xs text-blue-600">https://guym.jp/NarrativeDuel/word_cards.csv</code>
+        </p>
 
-            <div class="flex flex-col space-y-4">
-                <button id="startAiGameButton" class="btn-primary w-full text-lg">
-                    AI対戦を開始 (即時プレイ)
-                </button>
-                <button id="startMultiplayerButton" class="btn-secondary w-full text-lg" disabled>
-                    マルチプレイヤー部屋を作成 (未実装)
-                </button>
-                
-                <div class="border-t border-gray-700 pt-4">
-                    <p class="text-sm text-gray-500 mb-2">既存の部屋に参加</p>
-                    <div class="flex space-x-2">
-                        <input type="text" id="joinRoomIdInput" class="flex-grow p-2 rounded-lg bg-gray-700 text-white text-sm" placeholder="部屋IDを入力 (Human Only)">
-                        <button id="joinGameButton" class="btn-secondary text-sm" disabled>参加</button>
-                    </div>
-                </div>
-            </div>
+        <!-- ロード中/エラーメッセージ表示エリア -->
+        <div id="status-message" class="text-center p-4 rounded-lg text-lg text-gray-600">
+            <svg id="loading-spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500 inline-block hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            データを読み込み中です...
+        </div>
+
+        <!-- CSVテーブル表示エリア -->
+        <div class="overflow-x-auto rounded-lg shadow-inner bg-gray-50">
+            <table id="csv-table" class="min-w-full divide-y divide-gray-200">
+                <!-- テーブルのヘッダーはJavaScriptで追加されます -->
+                <thead class="bg-blue-600 text-white sticky top-0"></thead>
+                <!-- テーブルのボディはJavaScriptで追加されます -->
+                <tbody class="divide-y divide-gray-200"></tbody>
+            </table>
         </div>
     </div>
 
-
-    <!-- --- ゲーム画面 --- -->
-    <div id="gameScreen">
-        <!-- ヘッダーエリア -->
-        <header class="text-center mb-4 pt-2">
-            <h1 class="font-shippori-mincho text-3xl font-bold tracking-wider text-blue-400">
-                語合《ナラティブデュエル》
-            </h1>
-            <button id="backToTitleButton" class="text-sm text-gray-400 hover:text-red-400 transition">
-                &laquo; タイトルに戻る
-            </button>
-        </header>
-
-        <!-- メッセージ/ステータス表示エリア -->
-        <div id="messageArea" class="msg-info">ゲームをロード中です...</div>
-
-        <!-- プレイヤー情報とターン表示 -->
-        <div class="flex justify-between items-center mb-4 p-3 bg-gray-800/50 rounded-lg shadow-inner">
-            <div id="playerStatus" class="flex-1">
-                <p class="text-lg font-bold">あなた (<span id="p1NameDisplay">P1</span>)</p>
-                <p class="text-sm text-gray-400">ID: <span id="userIdDisplay" class="text-yellow-400 text-sm">...</span></p>
-                <p class="text-md">トラッシュ: <span id="p1TrashCount" class="font-bold text-red-400">0 / 5</span></p>
-            </div>
-            <div id="turnStatus" class="text-xl font-bold text-center w-1/4">
-                <p class="text-sm font-normal text-gray-400">ターン</p>
-                <span id="turnIndicator" class="text-red-400">待機中</span>
-            </div>
-            <div id="opponentStatus" class="flex-1 text-right">
-                <p class="text-lg font-bold"><span id="p2NameDisplay">相手</span></p>
-                <p class="text-sm text-gray-400">ID: <span id="opponentIdDisplay" class="text-yellow-400 text-sm">...</span></p>
-                <p class="text-md">トラッシュ: <span id="p2TrashCount" class="font-bold text-red-400">0 / 5</span></p>
-            </div>
-        </div>
-        
-        <!-- ゲームコントロールと情報 -->
-        <div class="mb-4 p-3 bg-gray-800/50 rounded-lg hidden" id="gameIdContainer">
-            <p class="text-sm font-bold text-gray-300">部屋ID (コピーして共有):</p>
-            <div class="flex justify-between items-center" id="gameIdDisplay">
-                <span id="roomIdText" class="bg-gray-700 text-sm text-yellow-300 p-2 rounded-lg break-all flex-grow mr-2"></span>
-                <button id="copyRoomIdButton" class="btn-secondary text-xs p-1">コピー</button>
-            </div>
-        </div>
-
-        <!-- ストーリーエリア -->
-        <div class="flex-grow bg-gray-800 p-4 rounded-xl shadow-inner mb-4 overflow-y-auto" style="height: 40vh; max-height: 40vh;">
-            <h2 class="text-2xl font-shippori-mincho font-bold mb-3 text-blue-300 border-b border-gray-700 pb-1">物語</h2>
-            <div id="storyContent" class="text-gray-200 whitespace-pre-wrap font-noto-serif text-lg">
-                物語が始まります...
-            </div>
-        </div>
-
-        <!-- プレイヤーの手札（カード）エリア -->
-        <h2 class="text-xl font-bold mb-2 text-center text-gray-300">あなたの手札</h2>
-        <div id="handArea" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-4 mb-4">
-            <!-- カードはここにJSで挿入されます -->
-        </div>
-
-        <!-- アクションエリア -->
-        <div id="actionArea" class="mt-auto">
-            <div class="flex space-x-4 mb-3">
-                <textarea id="narrativeInput" class="flex-grow" rows="2" placeholder="物語の次の展開を記述してください（50文字程度）" maxlength="150"></textarea>
-            </div>
-            <div class="flex justify-center">
-                <button id="submitButton" class="btn-primary w-2/3" disabled>
-                    展開を送信
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- モーダル（ゲームオーバーなど） -->
-    <div id="modal" class="modal hidden">
-        <div class="modal-content">
-            <h3 id="modalTitle" class="text-2xl font-bold mb-4 text-blue-400"></h3>
-            <p id="modalMessage" class="mb-6 text-gray-300"></p>
-            <div class="flex justify-end">
-                <button id="closeModalButton" class="btn-primary">閉じる</button>
-            </div>
-        </div>
-    </div>
-
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot, collection, query, where, getDocs, updateDoc, arrayUnion, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- グローバル変数とFirebase初期化用定数 ---
-        let db;
-        let auth;
-        let userId = 'loading...';
-        let currentGameId = null;
-        let selectedCard = null;
-        let unsubscribeGame = null; // Firestoreリスナーの購読解除関数
-        let gameState = {}; // ゲーム状態のローカルキャッシュ
-
-        // Canvas環境から提供されるグローバル変数を使用
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Firebase設定のフォールバック (Canvas外で起動した場合にエラーを回避)
-        const DUMMY_FIREBASE_CONFIG = {
-            apiKey: "dummy-api-key", authDomain: "dummy-project.firebaseapp.com",
-            projectId: "dummy-project", storageBucket: "dummy-project.appspot.com",
-            messagingSenderId: "123456789012", appId: "1:123456789012:web:abcdef1234567890abcdef",
-        };
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : DUMMY_FIREBASE_CONFIG;
-        let isFirebaseAvailable = typeof __firebase_config !== 'undefined'; // Firebaseが機能するかどうかのフラグ
-
-        // ゲームステータスの定数
-        const GAME_STATUS = {
-            WAITING: 'waiting',
-            IN_PROGRESS: 'in_progress',
-            ENDED: 'ended'
-        };
-
-        // LLM APIの定数
-        const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent";
-        const API_KEY = "";
-
-        // カードデータ (前回のものと同じ)
-        const DECK_TEMPLATE_DATA = `
-ID,Type,Category,Name,Description
-W001,WORD,時間,夜明け,新しい始まり
-W002,WORD,時間,夕暮れ,静かな終わり
-W003,WORD,時間,過去,取り戻せないもの
-W004,WORD,時間,未来,未だ見ぬ景色
-W005,WORD,時間,永遠,時の流れを超えて
-W006,WORD,自然・場所,山脈,そびえ立つ壁
-W007,WORD,自然・場所,森,光の届かない場所
-W008,WORD,自然・場所,海,全てを飲み込む深淵
-W009,WORD,自然・場所,砂漠,果てなき孤独
-W010,WORD,自然・場所,都市,喧騒と欲望の渦
-W011,WORD,自然・場所,廃墟,忘れ去られた文明
-W012,WORD,自然・場所,宇宙,無限の広がり
-W013,WORD,人体,目,真実を映す鏡
-W014,WORD,人体,手,創造と破壊の道具
-W015,WORD,人体,心臓,命の音
-W016,WORD,人体,足,旅の始まり
-W017,WORD,感情・感覚,歓喜,抑えきれない喜び
-W018,WORD,感情・感覚,悲嘆,魂の叫び
-W019,WORD,感情・感覚,恐怖,影に潜むもの
-W020,WORD,感情・感覚,愛,最も強力な力
-W021,WORD,感情・感覚,憎悪,全てを焼き尽くす炎
-W022,WORD,感情・感覚,希望,暗闇の中の灯り
-W023,WORD,感情・感覚,絶望,底なしの沼
-W024,WORD,ファンタジー,魔法,非科学的な力
-W025,WORD,ファンタジー,竜,空を統べる存在
-W026,WORD,ファンタジー,妖精,小さな奇跡
-W027,WORD,ファンタジー,英雄,物語の中心
-W028,WORD,ファンタジー,魔王,世界の敵
-W029,WORD,SF,機械,鉄と油の生命体
-W030,WORD,SF,宇宙船,星々を渡る箱舟
-W031,WORD,SF,異星人,未知との遭遇
-W032,WORD,SF,サイバー,電脳世界の裏側
-W033,WORD,戦闘,剣,正義の刃
-W034,WORD,戦闘,銃,遠距離の脅威
-W035,WORD,戦闘,爆発,全てを一瞬で
-W036,WORD,戦闘,罠,静かなる殺意
-W037,WORD,恋愛,出会い,運命の糸
-W038,WORD,恋愛,別れ,痛む決断
-W039,WORD,接続詞,そして,流れを続ける
-W040,WORD,接続詞,しかし,予期せぬ転換
-W041,WORD,接続詞,だから,理由と結果
-W042,WORD,動詞,走る,緊急事態
-W043,WORD,動詞,飛ぶ,自由への渇望
-W044,WORD,動詞,探す,失われた何か
-W045,WORD,動詞,隠れる,秘密を守る
-W046,WORD,動詞,与える,慈悲と犠牲
-W047,WORD,動詞,奪う,強欲と支配
-W048,WORD,自然・場所,泉,清らかな水
-W049,WORD,自然・場所,洞窟,暗黒の迷宮
-W050,WORD,自然・場所,火山,大地の怒り
-E001,ENDING,結末,ハッピーエンド,「そして、二人は幸せに暮らしました。」で物語を終える。
-E002,ENDING,結末,バッドエンド,「全ては灰となり、何も残らなかった。」で物語を終える。
-I001,INTERCEPT,妨害,巻き戻し,直前の相手の物語を無効にする。（未実装）
-I002,INTERCEPT,妨害,ドロー妨害,相手の次のドローフェイズをスキップさせる。（未実装）
-`;
-        let allCards = [];
-
-        // --- ユーティリティ関数 ---
+    <script>
+        // グローバル定数
+        const CSV_URL = "https://guym.jp/NarrativeDuel/word_cards.csv";
+        const statusMessage = document.getElementById('status-message');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const tableHead = document.querySelector('#csv-table thead');
+        const tableBody = document.querySelector('#csv-table tbody');
 
         /**
-         * CSV文字列をパースしてカードオブジェクトの配列を生成する
+         * ステータス/エラーメッセージを更新します。
+         * @param {string} message - 表示するメッセージ。
+         * @param {boolean} isLoading - ローディングスピナーを表示するかどうか。
+         * @param {string} type - メッセージの種類 (info, error)。
          */
-        function parseCardData(csv) {
-            const lines = csv.trim().split('\n').filter(line => line.trim() !== '');
-            if (lines.length === 0) return [];
-            const headers = lines[0].split(',').map(h => h.trim());
-            const cards = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(',');
-                if (values.length !== headers.length) continue;
-
-                const card = {};
-                headers.forEach((header, index) => {
-                    card[header] = values[index].trim();
-                });
-                cards.push(card);
-            }
-            return cards;
-        }
-
-        /**
-         * 配列をシャッフルする (Fisher-Yatesアルゴリズム)
-         */
-        function shuffle(array) {
-            const newArray = [...array];
-            for (let i = newArray.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-            }
-            return newArray;
-        }
-
-        /**
-         * メッセージエリアを更新する (ゲーム画面用)
-         */
-        function updateMessage(message, type = 'info') {
-            const messageArea = document.getElementById('messageArea');
-            if (messageArea) {
-                messageArea.textContent = message;
-                messageArea.className = `msg-${type}`;
-            }
-        }
-        
-        /**
-         * モーダルを表示する
-         */
-        function showModal(title, message) {
-            document.getElementById('modalTitle').textContent = title;
-            document.getElementById('modalMessage').textContent = message;
-            document.getElementById('modal').classList.remove('hidden');
-        }
-
-        /**
-         * モーダルを非表示にする
-         */
-        function hideModal() {
-            document.getElementById('modal').classList.add('hidden');
-        }
-
-        /**
-         * クリップボードにテキストをコピーする
-         */
-        function copyToClipboard(text) {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                updateMessage("部屋IDをクリップボードにコピーしました！", 'success');
-            } catch (err) {
-                updateMessage("コピーに失敗しました。", 'error');
-            }
-            document.body.removeChild(textarea);
-        }
-
-        /**
-         * 画面を切り替える
-         */
-        function switchScreen(screenId) {
-            document.getElementById('titleScreen').classList.add('hidden');
-            document.getElementById('gameScreen').classList.add('hidden');
-
-            if (screenId === 'titleScreen') {
-                document.getElementById('titleScreen').classList.remove('hidden');
-            } else if (screenId === 'gameScreen') {
-                document.getElementById('gameScreen').classList.remove('hidden');
-                document.getElementById('gameScreen').classList.add('flex'); // flex-colを再適用
-            }
-        }
-
-        // --- Firebase初期化と認証処理 ---
-        async function initializeFirebase() {
-            try {
-                const indicator = document.getElementById('envIndicator');
-                if (!isFirebaseAvailable) {
-                     indicator.textContent = "環境: ローカル (データ永続化機能なし)";
-                     indicator.classList.add('text-red-400');
-                     return;
-                }
-                
-                indicator.textContent = "環境: Firebase連携済み (永続化機能あり)";
-                indicator.classList.add('text-green-400');
-                
-                setLogLevel('debug');
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-            
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        document.getElementById('userIdDisplay').textContent = user.uid.substring(0, 8) + '...';
-                        // タイトル画面でゲーム復元を試みる
-                        await attemptRestoreGame(); 
-                    } else {
-                        userId = null;
-                        document.getElementById('userIdDisplay').textContent = '未認証';
-                    }
-                });
-
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
+        function updateStatus(message, isLoading = false, type = 'info') {
+            statusMessage.textContent = message;
+            if (isLoading) {
+                loadingSpinner.classList.remove('hidden');
+                statusMessage.classList.remove('text-red-500', 'font-semibold');
+                statusMessage.classList.add('text-gray-600');
+                statusMessage.prepend(loadingSpinner);
+            } else {
+                loadingSpinner.classList.add('hidden');
+                if (type === 'error') {
+                    statusMessage.classList.add('text-red-500', 'font-semibold');
+                    statusMessage.classList.remove('text-gray-600');
                 } else {
-                    await signInAnonymously(auth);
+                    statusMessage.classList.remove('text-red-500', 'font-semibold');
+                    statusMessage.classList.add('text-gray-600');
                 }
-
-            } catch (error) {
-                console.error("Firebase初期化/認証エラー:", error);
-                isFirebaseAvailable = false;
-                document.getElementById('envIndicator').textContent = "環境: 認証失敗 (AI対戦のみ)";
-                document.getElementById('envIndicator').classList.add('text-red-400');
-                // 匿名IDをフォールバックとして設定
-                userId = crypto.randomUUID(); 
-                document.getElementById('userIdDisplay').textContent = userId.substring(0, 8) + '...';
             }
         }
 
-
-        // --- ゲームコアロジック ---
-
         /**
-         * 新しいゲームを開始する
+         * CSVデータをパースしてHTMLテーブルとして描画します。
+         * @param {string} csvText - CSVコンテンツの文字列。
          */
-        async function startNewGame(opponentType) {
-            const isAI = opponentType === 'AI';
-            const opponentName = isAI ? 'AI（Gemini）' : '相手';
-            
-            if (!isFirebaseAvailable && !isAI) {
-                alert("Firebaseが利用できません。マルチプレイヤーゲームは開始できません。");
+        function renderTable(csvText) {
+            // CSVを解析（簡単な実装として改行とカンマで分割）
+            // 実際にはcsv-parserライブラリなどを使うべきですが、今回はシンプルなケースとして手動で処理します。
+            const lines = csvText.split('\n').filter(line => line.trim() !== '');
+
+            if (lines.length === 0) {
+                updateStatus('エラー: CSVファイルが空であるか、不正な形式です。', false, 'error');
                 return;
             }
 
-            if (unsubscribeGame) {
-                unsubscribeGame();
-                unsubscribeGame = null;
-            }
-            
-            // 画面切り替え
-            switchScreen('gameScreen');
-            
-            // デッキを構築
-            let fullDeck = shuffle(allCards); 
+            // ヘッダー行とデータ行を分離
+            const headerRow = lines[0].split(',');
+            const dataRows = lines.slice(1);
 
-            // 初期手札を引く
-            const HAND_SIZE = 5;
-            const p1Hand = fullDeck.splice(0, HAND_SIZE);
-            const p2Hand = fullDeck.splice(0, HAND_SIZE);
+            // 1. ヘッダーを描画
+            const headerHtml = `
+                <tr>
+                    ${headerRow.map(cell => `
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                            ${cell.trim()}
+                        </th>
+                    `).join('')}
+                </tr>
+            `;
+            tableHead.innerHTML = headerHtml;
 
-            currentGameId = `game-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-            
-            const newGameState = {
-                status: isAI ? GAME_STATUS.IN_PROGRESS : GAME_STATUS.WAITING,
-                currentTurn: 'P1',
-                story: "物語の始まり: 「むかしむかし、遥かなる星に、ひとりの若いパイロットが住んでいました。」",
-                p1Hand: p1Hand,
-                p2Hand: p2Hand,
-                p1Trash: [],
-                p2Trash: [],
-                p1Uid: userId,
-                p2Uid: isAI ? 'AI_BOT' : null,
-                p1Name: 'あなた',
-                p2Name: opponentName,
-                deck: fullDeck,
-                turnCount: 1,
-                goal: 5,
-                opponentType: opponentType,
-                aiProcessing: false,
-                timestamp: serverTimestamp()
-            };
+            // 2. ボディを描画
+            let bodyHtml = '';
+            dataRows.forEach((line, index) => {
+                const cells = line.split(',');
+                // 奇数行/偶数行で背景色を交互に変える
+                const rowClass = index % 2 === 0 ? 'bg-white hover:bg-gray-100' : 'bg-gray-50 hover:bg-gray-100';
 
-            gameState = newGameState;
-
-            if (isFirebaseAvailable) {
-                const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', currentGameId);
-                await setDoc(gameRef, newGameState);
-                
-                startListeningToGame(currentGameId);
-                
-                if (isAI) {
-                    updateMessage("AI対戦を開始しました。あなたのターンです。", 'success');
-                } else {
-                    updateMessage("マルチプレイヤー部屋を作成しました。相手の参加を待っています。", 'waiting');
-                }
-            } else {
-                 // Firebaseなし（AI対戦のみ）
-                 gameState.status = GAME_STATUS.IN_PROGRESS;
-                 renderUI(gameState);
-                 updateMessage("AI対戦を開始しました（データは保存されません）。あなたのターンです。", 'success');
-            }
-            
-            renderUI(gameState);
-        }
-
-        /**
-         * 認証後に復元可能なゲームを探す (P1として参加しているゲーム)
-         */
-        async function attemptRestoreGame() {
-            if (!isFirebaseAvailable || !userId || !auth.currentUser) return;
-            
-            const q = query(
-                collection(db, 'artifacts', appId, 'public', 'data', 'games'),
-                where('status', '==', GAME_STATUS.IN_PROGRESS),
-                where('p1Uid', '==', userId)
-            );
-
-            try {
-                const querySnapshot = await getDocs(q);
-                if (querySnapshot.empty) {
-                    // 復元するゲームがない場合は何もしない
-                    return;
-                }
-
-                const docSnap = querySnapshot.docs[0];
-                currentGameId = docSnap.id;
-                startListeningToGame(currentGameId);
-                
-                // 復元メッセージをタイトル画面に表示
-                const indicator = document.getElementById('envIndicator');
-                indicator.textContent = `環境: Firebase連携済み | 前回のゲーム (ID: ${currentGameId.substring(0, 8)}...) が復元されました。`;
-                indicator.classList.add('text-yellow-400');
-                
-            } catch (error) {
-                console.error("ゲーム復元エラー:", error);
-            }
-        }
-
-        /**
-         * ゲーム状態の変更をFirestoreから監視する
-         */
-        function startListeningToGame(gameId) {
-            if (!isFirebaseAvailable) return;
-            
-            if (unsubscribeGame) unsubscribeGame();
-
-            const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', gameId);
-            
-            unsubscribeGame = onSnapshot(gameRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    gameState = docSnap.data();
-                    renderUI(gameState);
-
-                    // ゲーム画面が表示されていない場合は切り替える (復元時)
-                    if (document.getElementById('gameScreen').classList.contains('hidden')) {
-                         switchScreen('gameScreen');
-                    }
-
-                    // AIのターンで、AI処理中でなく、ゲームが進行中の場合
-                    const isAI = gameState.opponentType === 'AI';
-                    const isAITurn = gameState.currentTurn === 'P2';
-
-                    if (isAI && isAITurn && gameState.status === GAME_STATUS.IN_PROGRESS && !gameState.aiProcessing) {
-                        handleAITurn();
-                    }
-                } else {
-                    updateMessage("ゲームが終了または削除されました。タイトル画面に戻ってください。", 'error');
-                    currentGameId = null;
-                    unsubscribeGame = null;
-                    document.getElementById('gameIdContainer').classList.add('hidden');
-                }
-            }, (error) => {
-                console.error("Firestoreリスナーエラー:", error);
-                updateMessage("ゲームデータの取得に失敗しました。", 'error');
-            });
-        }
-        
-        /**
-         * ゲーム状態に基づいてUIをレンダリングする
-         */
-        function renderUI(state) {
-            if (!state.status) return;
-
-            const isP1 = state.p1Uid === userId; 
-            const myHand = isP1 ? state.p1Hand : state.p2Hand;
-            
-            // プレイヤー情報
-            document.getElementById('p1NameDisplay').textContent = state.p1Name;
-            document.getElementById('p2NameDisplay').textContent = state.p2Name;
-            
-            document.getElementById('p1TrashCount').textContent = `${state.p1Trash.length} / ${state.goal}`;
-            document.getElementById('p2TrashCount').textContent = `${state.p2Trash.length} / ${state.goal}`;
-            
-            document.getElementById('opponentIdDisplay').textContent = state.p2Uid ? (state.p2Uid === 'AI_BOT' ? 'AI' : state.p2Uid.substring(0, 8) + '...') : '未参加';
-            
-            // ターン表示
-            const isMyTurn = (isP1 && state.currentTurn === 'P1') || (!isP1 && state.currentTurn === 'P2');
-            const currentPlayerName = state.currentTurn === 'P1' ? state.p1Name : state.p2Name;
-            const turnText = isMyTurn ? "あなたのターン" : `${currentPlayerName}のターン`;
-            document.getElementById('turnIndicator').textContent = turnText;
-            document.getElementById('turnIndicator').classList.toggle('text-red-400', isMyTurn);
-            document.getElementById('turnIndicator').classList.toggle('text-blue-400', !isMyTurn);
-            
-            // ストーリーログ
-            document.getElementById('storyContent').textContent = state.story;
-
-            // 手札のレンダリング
-            renderHand(myHand, isMyTurn);
-
-            // アクションボタンと入力フィールドの制御
-            const submitButton = document.getElementById('submitButton');
-            const narrativeInput = document.getElementById('narrativeInput');
-            
-            const isAITurn = state.currentTurn === 'P2' && state.opponentType === 'AI';
-
-            if (state.status === GAME_STATUS.IN_PROGRESS) {
-                if (isMyTurn) {
-                    narrativeInput.disabled = false;
-                    submitButton.disabled = !selectedCard || narrativeInput.value.trim() === "";
-                    updateMessage("カードを選択し、物語の展開を入力して送信してください。", 'info');
-                } else {
-                    narrativeInput.disabled = true;
-                    submitButton.disabled = true;
-                    if (isAITurn) {
-                         updateMessage(state.aiProcessing ? "AIが考え中です...しばらくお待ちください。" : "AIのターンです。", 'waiting');
-                    } else {
-                         updateMessage("相手のターンです。", 'info');
-                    }
-                }
-            } else if (state.status === GAME_STATUS.ENDED) {
-                narrativeInput.disabled = true;
-                submitButton.disabled = true;
-                showModal("ゲーム終了", `${state.winnerName}の勝利！ おめでとうございます！`);
-            } else if (state.status === GAME_STATUS.WAITING) {
-                narrativeInput.disabled = true;
-                submitButton.disabled = true;
-                updateMessage("相手の参加を待っています。", 'waiting');
-            }
-            
-            // 部屋IDコンテナの表示
-            if (state.opponentType === 'Human' && state.status !== GAME_STATUS.ENDED && currentGameId) {
-                document.getElementById('roomIdText').textContent = currentGameId;
-                document.getElementById('gameIdContainer').classList.remove('hidden');
-            } else {
-                document.getElementById('gameIdContainer').classList.add('hidden');
-            }
-        }
-
-        /**
-         * 手札をDOMにレンダリングする (省略)
-         */
-        function renderHand(hand, isClickable) {
-            const handArea = document.getElementById('handArea');
-            handArea.innerHTML = '';
-            
-            hand.forEach(card => {
-                const cardElement = document.createElement('div');
-                cardElement.className = `card card-type-${card.Type}`;
-                
-                if (selectedCard && selectedCard.ID === card.ID) {
-                    cardElement.classList.add('card-active');
-                }
-
-                cardElement.innerHTML = `
-                    <p class="font-bold text-lg mb-1">${card.Name}</p>
-                    <p class="text-sm text-gray-300 mb-2">(${card.Category})</p>
-                    <p class="text-xs">${card.Description}</p>
+                bodyHtml += `
+                    <tr class="${rowClass} transition duration-150 ease-in-out">
+                        ${cells.map(cell => `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                                ${cell.trim()}
+                            </td>
+                        `).join('')}
+                    </tr>
                 `;
-
-                if (isClickable) {
-                    cardElement.onclick = () => handleCardSelection(card, cardElement);
-                } else {
-                    cardElement.classList.add('card-disabled');
-                }
-
-                handArea.appendChild(cardElement);
             });
-        }
-        
-        /**
-         * カード選択時の処理 (省略)
-         */
-        function handleCardSelection(card, element) {
-            document.querySelectorAll('.card-active').forEach(e => e.classList.remove('card-active'));
+            tableBody.innerHTML = bodyHtml;
             
-            if (selectedCard && selectedCard.ID === card.ID) {
-                selectedCard = null;
-            } else {
-                selectedCard = card;
-                element.classList.add('card-active');
-            }
-            
-            document.getElementById('submitButton').disabled = !selectedCard || document.getElementById('narrativeInput').value.trim() === "";
+            // 成功メッセージ
+            updateStatus(`データ(${lines.length}行)の読み込みが完了しました。`, false, 'info');
+            statusMessage.classList.add('hidden'); // テーブル表示後は非表示にする
         }
 
         /**
-         * 展開を送信する (人間プレイヤーのアクション) (省略)
+         * URLからCSVファイルをフェッチし、エンコーディングを処理します。
+         * ネットワークエラーに対応するため、最大3回まで再試行します。
          */
-        async function handleSubmitAction() {
-            if (!selectedCard || gameState.status !== GAME_STATUS.IN_PROGRESS) return;
+        async function fetchCsvData() {
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
             
-            const isP1 = gameState.p1Uid === userId;
-            const myPlayerKey = isP1 ? 'p1' : 'p2';
-            const myName = isP1 ? gameState.p1Name : gameState.p2Name;
-            const opponentPlayerKey = isP1 ? 'p2' : 'p1';
+            const MAX_RETRIES = 3;
+            
+            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                try {
+                    // 試行回数をステータスに表示
+                    updateStatus(`データを読み込み中です... (試行 ${attempt}/${MAX_RETRIES})`, true);
+                    
+                    const response = await fetch(CSV_URL);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTPエラー: ${response.status} ${response.statusText}`);
+                    }
 
-            const narrativeInput = document.getElementById('narrativeInput');
-            const narrativeText = narrativeInput.value.trim();
-            
-            if (!narrativeText) {
-                updateMessage("物語の展開を入力してください。", 'error');
-                return;
-            }
-            
-            document.getElementById('submitButton').disabled = true;
-            narrativeInput.disabled = true;
-            
-            const cardUsed = selectedCard;
-            
-            let nextHand = gameState[`${myPlayerKey}Hand`].filter(c => c.ID !== cardUsed.ID);
-            let nextDeck = [...gameState.deck];
-            let nextTrash = [...gameState[`${myPlayerKey}Trash`], cardUsed];
-            let nextStatus = GAME_STATUS.IN_PROGRESS;
-            let winnerName = null;
-            
-            // ドロー
-            if (nextDeck.length > 0) {
-                const drawnCard = nextDeck.shift();
-                nextHand.push(drawnCard);
-            }
-            
-            // 勝利判定
-            if (nextTrash.length >= gameState.goal || cardUsed.Type === 'ENDING') {
-                nextStatus = GAME_STATUS.ENDED;
-                winnerName = myName;
-            }
+                    // バイナリデータを取得し、エンコーディングを判定してデコード
+                    const buffer = await response.arrayBuffer();
+                    const decoder = new TextDecoder('utf-8');
+                    let csvText = decoder.decode(buffer);
 
-            const newStoryEntry = `[${myName}は「${cardUsed.Name}」のカードを使い、物語を「${narrativeText}」と展開させた。]`;
-            const newStory = `${gameState.story}\n\n${newStoryEntry}`;
+                    // データの先頭にBOMがある場合は除去
+                    if (csvText.charCodeAt(0) === 0xFEFF) {
+                        csvText = csvText.substring(1);
+                    }
 
-            const updates = {
-                story: newStory,
-                [`${myPlayerKey}Hand`]: nextHand,
-                [`${myPlayerKey}Trash`]: nextTrash,
-                deck: nextDeck,
-                currentTurn: opponentPlayerKey.toUpperCase(),
-                turnCount: gameState.turnCount + 1,
-                status: nextStatus,
-                winnerName: winnerName,
-                log: arrayUnion({ player: myName, card: cardUsed.Name, text: narrativeText, timestamp: serverTimestamp() })
-            };
-            
-            narrativeInput.value = '';
-            selectedCard = null;
-            
-            if (isFirebaseAvailable) {
-                const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', currentGameId);
-                await updateDoc(gameRef, updates);
-            } else {
-                gameState = { ...gameState, ...updates, [`${myPlayerKey}Hand`]: nextHand, [`${myPlayerKey}Trash`]: nextTrash, deck: nextDeck, aiProcessing: false };
-                renderUI(gameState);
-                if (gameState.status === GAME_STATUS.IN_PROGRESS && gameState.opponentType === 'AI' && gameState.currentTurn === 'P2') {
-                    await handleAITurn();
+                    renderTable(csvText);
+                    return; // 成功したら関数を終了
+
+                } catch (error) {
+                    console.error(`CSVデータの取得または処理に失敗 (試行 ${attempt}):`, error);
+                    
+                    if (attempt === MAX_RETRIES) {
+                        // 最終試行の場合はエラーメッセージを表示
+                        updateStatus(`エラーが発生しました: ${error.message}。ネットワーク接続またはCORSポリシーを確認してください。`, false, 'error');
+                        statusMessage.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    // 再試行のために待機 (指数関数的バックオフ: 0.5秒, 1秒, 2秒)
+                    const delay = Math.pow(2, attempt) * 500;
+                    console.warn(`${delay / 1000}秒後に再試行します...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
                 }
             }
         }
 
-
-        // --- AIロジック ---
-
-        /**
-         * AIのターン処理 (省略 - P2の処理として動作)
-         */
-        async function handleAITurn() {
-            if (gameState.p2Uid !== 'AI_BOT' || gameState.currentTurn !== 'P2' || gameState.status !== GAME_STATUS.IN_PROGRESS) return;
-
-            // ロック処理
-            const gameRef = isFirebaseAvailable ? doc(db, 'artifacts', appId, 'public', 'data', 'games', currentGameId) : null;
-            if (isFirebaseAvailable) { await updateDoc(gameRef, { aiProcessing: true }); } 
-            else { gameState.aiProcessing = true; renderUI(gameState); }
-            
-            updateMessage("AIが物語を創造中...（最大10秒）", 'waiting');
-            await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 1000));
-            
-            const myHand = gameState.p2Hand;
-            
-            let cardToUse = myHand.find(c => c.Type === 'ENDING' && gameState.p2Trash.length >= gameState.goal - 1);
-            
-            if (!cardToUse) {
-                const wordCards = myHand.filter(c => c.Type === 'WORD');
-                if (wordCards.length > 0) {
-                    cardToUse = wordCards[Math.floor(Math.random() * wordCards.length)];
-                } else {
-                    if (isFirebaseAvailable) { await updateDoc(gameRef, { aiProcessing: false }); }
-                    await skipTurn('P2');
-                    return;
-                }
-            }
-
-            const myName = gameState.p2Name;
-            const isEndingCard = cardToUse.Type === 'ENDING';
-
-            // Geminiへのプロンプト作成 (省略)
-            const systemPrompt = `あなたは物語を紡ぐAIです。現在の物語に続き、使用するカード名「${cardToUse.Name}（${cardToUse.Description}）」を基に、物語の次の展開を50文字程度で簡潔に記述してください。現在の物語が自然に繋がるように、物語を深める展開を創造してください。`;
-            const userQuery = `現在の物語:\n${gameState.story}`;
-
-            let aiText = `カード「${cardToUse.Name}」を使用したが、AIの思考は深く、静かに時が流れた...`;
-
-            try {
-                const response = await fetch(GEMINI_API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: userQuery }] }],
-                        systemInstruction: { parts: [{ text: systemPrompt }] },
-                    })
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    aiText = result.candidates[0].content.parts[0].text.trim();
-                }
-            } catch (error) {
-                console.error("Gemini API呼び出し失敗:", error);
-            }
-
-            // --- 新しい状態の計算 (AIアクション) ---
-            let nextHand = myHand.filter(c => c.ID !== cardToUse.ID);
-            let nextDeck = [...gameState.deck];
-            let nextTrash = [...gameState.p2Trash, cardToUse];
-            let nextTurn = 'P1';
-            let nextStatus = GAME_STATUS.IN_PROGRESS;
-            let winnerName = null;
-            
-            // ドロー（結末カード使用時はドローしない）
-            if (nextDeck.length > 0 && !isEndingCard) {
-                const drawnCard = nextDeck.shift();
-                nextHand.push(drawnCard);
-            }
-            
-            // 勝利判定
-            if (nextTrash.length >= gameState.goal || isEndingCard) {
-                nextStatus = GAME_STATUS.ENDED;
-                winnerName = myName;
-            }
-
-            const newStoryEntry = `[${myName}は「${cardToUse.Name}」のカードを使い、物語を「${aiText}」と展開させた。]`;
-            const newStory = `${gameState.story}\n\n${newStoryEntry}`;
-            
-            const updates = {
-                story: newStory,
-                p2Hand: nextHand,
-                p2Trash: nextTrash,
-                deck: nextDeck,
-                currentTurn: nextTurn,
-                turnCount: gameState.turnCount + 1,
-                status: nextStatus,
-                winnerName: winnerName,
-                aiProcessing: false,
-                log: arrayUnion({ player: myName, card: cardToUse.Name, text: aiText, timestamp: serverTimestamp() })
-            };
-            
-            if (isFirebaseAvailable) {
-                await updateDoc(gameRef, updates);
-            } else {
-                 gameState = { ...gameState, ...updates, p2Hand: nextHand, p2Trash: nextTrash, deck: nextDeck };
-                 renderUI(gameState);
-            }
-            
-            updateMessage("あなたのターンです。", 'info');
-        }
-        
-        /**
-         * ターンをスキップする (今回はAIのカード不足時のみ) (省略)
-         */
-        async function skipTurn(playerKey) {
-            if (!currentGameId) return;
-
-            let nextTurn = playerKey === 'P1' ? 'P2' : 'P1';
-            const skipMessage = playerKey === 'P1' ? 
-                `${gameState.p1Name}は展開を断念し、ターンをスキップした。` :
-                `${gameState.p2Name}は有効なカードを持たず、ターンをスキップした。`;
-            
-            const newStoryEntry = `[ナレーター: ${skipMessage}]`;
-            const newStory = `${gameState.story}\n\n${newStoryEntry}`;
-
-            const updates = {
-                story: newStory,
-                currentTurn: nextTurn,
-                turnCount: gameState.turnCount + 1,
-                aiProcessing: false,
-                log: arrayUnion({ player: 'System', text: skipMessage, timestamp: serverTimestamp() })
-            };
-            
-            if (isFirebaseAvailable) {
-                 const gameRef = doc(db, 'artifacts', appId, 'public', 'data', 'games', currentGameId);
-                 await updateDoc(gameRef, updates);
-            } else {
-                gameState = { ...gameState, ...updates };
-                renderUI(gameState);
-                if (gameState.currentTurn === 'P2' && nextTurn === 'P2') {
-                     await handleAITurn();
-                }
-            }
-        }
-
-
-        // --- イベントリスナーと初期起動 ---
-
-        window.onload = async () => {
-            // 1. カードデータ初期化
-            allCards = parseCardData(DECK_TEMPLATE_DATA);
-            
-            // 2. Firebase初期化（環境判定含む）
-            await initializeFirebase();
-            
-            // 3. UIの初期設定
-            switchScreen('titleScreen');
-            document.getElementById('p1NameDisplay').textContent = "あなた"; 
-            document.getElementById('p2NameDisplay').textContent = "相手";
-            renderHand([], false); 
-
-            // 4. イベントリスナー
-            document.getElementById('closeModalButton').addEventListener('click', hideModal);
-            
-            // タイトル画面のボタン
-            document.getElementById('startAiGameButton').addEventListener('click', () => startNewGame('AI'));
-            document.getElementById('startMultiplayerButton').addEventListener('click', () => startNewGame('Human')); // 未実装だがボタンクリックは追加
-            document.getElementById('joinGameButton').addEventListener('click', () => {
-                 const roomId = document.getElementById('joinRoomIdInput').value.trim();
-                 if (roomId) {
-                     // TODO: joinGameWithId(roomId)
-                     alert("マルチプレイヤー参加機能は未実装です。AI対戦をお試しください。");
-                 } else {
-                     alert("部屋IDを入力してください。");
-                 }
-            });
-
-            // ゲーム画面のボタン
-            document.getElementById('backToTitleButton').addEventListener('click', () => {
-                 if (unsubscribeGame) {
-                     unsubscribeGame();
-                     unsubscribeGame = null;
-                 }
-                 currentGameId = null;
-                 selectedCard = null;
-                 switchScreen('titleScreen');
-            });
-            document.getElementById('submitButton').addEventListener('click', handleSubmitAction);
-            document.getElementById('copyRoomIdButton').addEventListener('click', () => copyToClipboard(currentGameId));
-            document.getElementById('narrativeInput').addEventListener('input', () => {
-                 document.getElementById('submitButton').disabled = !selectedCard || document.getElementById('narrativeInput').value.trim() === "";
-            });
-            
-        };
+        // ページロード時にデータ取得を開始
+        window.onload = fetchCsvData;
 
     </script>
 </body>
